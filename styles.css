@@ -1,0 +1,87 @@
+body,
+html {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Inter", sans-serif;
+  background: #f7f8fa;
+}
+
+.card-stack {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  width: 80%;
+  max-width: 600px;
+  height: 70vh;
+  perspective: 1200px; /* 입체감 */
+}
+
+.card {
+  position: absolute;
+  inset: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+  padding: 40px;
+  opacity: 0;
+  transform: translateY(100%) translateZ(200px); /* 기본: 앞·아래 */
+}
+
+/* 현재 카드: 중앙에 위치 */
+.card.active {
+  opacity: 1;
+  transform: translateY(0) translateZ(0);
+  transition: transform 0.8s ease, opacity 0.8s ease;
+  z-index: 2;
+}
+
+/* 이전 카드: 서있는 채로 뒤·아래로 내려감 */
+.card.exit-down {
+  opacity: 0;
+  transform: translateY(100%) translateZ(-200px);
+  transition: transform 0.8s ease, opacity 0.8s ease;
+  z-index: 1;
+}
+
+/* 다음 카드: 앞·아래에서 올라옴 */
+.card.enter-up {
+  opacity: 1;
+  animation: slideUp 0.8s forwards ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%) translateZ(200px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) translateZ(0);
+    opacity: 1;
+  }
+}
+
+/* 인디케이터 */
+.indicator {
+  position: fixed;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ddd;
+  transition: background 0.3s, transform 0.3s;
+}
+
+.dot.active {
+  background: #0f4c81;
+  transform: scale(1.6);
+}
