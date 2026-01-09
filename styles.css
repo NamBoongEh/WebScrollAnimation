@@ -15,7 +15,7 @@ html {
   width: 80%;
   max-width: 600px;
   height: 70vh;
-  perspective: 1200px; /* 입체감 */
+  perspective: 1200px;
 }
 
 .card {
@@ -23,42 +23,49 @@ html {
   inset: 0;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.25);
   padding: 40px;
-  opacity: 0;
-  transform: translateY(100%) translateZ(200px); /* 기본: 앞·아래 */
+  opacity: 1;
+  transform: scale(0.7) translateY(100%) translateZ(300px);
 }
 
-/* 현재 카드: 중앙에 위치 */
+/* 현재 카드 */
 .card.active {
-  opacity: 1;
-  transform: translateY(0) translateZ(0);
-  transition: transform 0.8s ease, opacity 0.8s ease;
-  z-index: 2;
+  transform: scale(1) translateY(0) translateZ(0) rotateX(0deg);
+  transition: transform 0.9s ease;
+  z-index: 3; /* 중앙 카드 항상 최상위 */
 }
 
-/* 이전 카드: 서있는 채로 뒤·아래로 내려감 */
+/* 이전 카드: 뒤로 넘어가며 작아짐 */
 .card.exit-down {
-  opacity: 0;
-  transform: translateY(100%) translateZ(-200px);
-  transition: transform 0.8s ease, opacity 0.8s ease;
-  z-index: 1;
+  animation: dramaticExit 0.9s forwards ease;
+  z-index: 2; /* 퇴장 중에도 중앙 카드보다 위 */
 }
 
-/* 다음 카드: 앞·아래에서 올라옴 */
-.card.enter-up {
-  opacity: 1;
-  animation: slideUp 0.8s forwards ease;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(100%) translateZ(200px);
-    opacity: 0;
+@keyframes dramaticExit {
+  0% {
+    transform: scale(1) translateY(0) translateZ(0) rotateX(0deg);
   }
-  to {
-    transform: translateY(0) translateZ(0);
-    opacity: 1;
+  100% {
+    transform: scale(0.6) translateY(120%) translateZ(-250px) rotateX(-40deg);
+  }
+}
+
+/* 새 카드: 작게 시작 → 커졌다가 안정화 */
+.card.enter-up {
+  animation: dramaticEnter 0.9s forwards ease;
+  z-index: 1; /* 입장 중에는 중앙 카드보다 아래 */
+}
+
+@keyframes dramaticEnter {
+  0% {
+    transform: scale(0.7) translateY(100%) translateZ(300px) rotateX(20deg);
+  }
+  60% {
+    transform: scale(1.2) translateY(-10%) translateZ(50px) rotateX(0deg);
+  }
+  100% {
+    transform: scale(1) translateY(0) translateZ(0) rotateX(0deg);
   }
 }
 
