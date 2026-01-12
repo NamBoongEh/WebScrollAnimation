@@ -25,21 +25,19 @@ html {
   border-radius: 12px;
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.25);
   padding: 40px;
-  opacity: 1;
   transform: scale(0.7) translateY(100%) translateZ(300px);
+  z-index: 1;
+  will-change: transform;
 }
 
-/* 현재 카드 */
 .card.active {
   transform: scale(1) translateY(0) translateZ(0) rotateX(0deg);
   transition: transform 0.9s ease;
-  z-index: 3; /* 중앙 카드 항상 최상위 */
+  z-index: 3;
 }
 
-/* 이전 카드: 뒤로 넘어가며 작아짐 */
 .card.exit-down {
   animation: dramaticExit 0.9s forwards ease;
-  z-index: 2; /* 퇴장 중에도 중앙 카드보다 위 */
 }
 
 @keyframes dramaticExit {
@@ -47,22 +45,20 @@ html {
     transform: scale(1) translateY(0) translateZ(0) rotateX(0deg);
   }
   100% {
-    transform: scale(0.6) translateY(120%) translateZ(-250px) rotateX(-40deg);
+    transform: scale(0.6) translateY(120%) translateZ(-400px) rotateX(-50deg);
   }
 }
 
-/* 새 카드: 작게 시작 → 커졌다가 안정화 */
 .card.enter-up {
   animation: dramaticEnter 0.9s forwards ease;
-  z-index: 1; /* 입장 중에는 중앙 카드보다 아래 */
 }
 
 @keyframes dramaticEnter {
   0% {
-    transform: scale(0.7) translateY(100%) translateZ(300px) rotateX(20deg);
+    transform: scale(0.7) translateY(100%) translateZ(500px) rotateX(20deg);
   }
   60% {
-    transform: scale(1.2) translateY(-10%) translateZ(50px) rotateX(0deg);
+    transform: scale(1.2) translateY(-10%) translateZ(100px) rotateX(0deg);
   }
   100% {
     transform: scale(1) translateY(0) translateZ(0) rotateX(0deg);
