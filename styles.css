@@ -1,90 +1,273 @@
-body,
-html {
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body, html {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  font-family: "Inter", sans-serif;
-  background: #f7f8fa;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
 }
 
 .card-stack {
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -60%);
-  width: 80%;
-  max-width: 600px;
-  height: 70vh;
-  perspective: 1200px;
+  transform: translate(-50%, -50%);
+  width: 85%;
+  max-width: 700px;
+  height: 500px;
+  perspective: 2000px;
+  perspective-origin: 50% 50%;
 }
 
 .card {
   position: absolute;
   inset: 0;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.25);
-  padding: 40px;
-  transform: scale(0.7) translateY(100%) translateZ(300px);
-  z-index: 1;
-  will-change: transform;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 24px;
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.12), 0 10px 30px rgba(0, 0, 0, 0.08);
+  padding: 60px 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: box-shadow 0.4s ease;
+}
+
+.card h2 {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 20px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.card p {
+  font-size: 1.4rem;
+  color: #6b7280;
+  line-height: 1.6;
+  font-weight: 400;
 }
 
 .card.active {
-  transform: scale(1) translateY(0) translateZ(0) rotateX(0deg);
-  transition: transform 0.9s ease;
-  z-index: 3;
+  transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
+  opacity: 1;
+  z-index: 10;
+  pointer-events: auto;
+  animation: none;
 }
 
-.card.exit-down {
-  animation: dramaticExit 0.9s forwards ease;
+.card.next-1 {
+  transform: translateZ(-200px) translateY(8%) rotateX(8deg) scale(0.92);
+  opacity: 0.7;
+  z-index: 9;
+  filter: brightness(0.95);
 }
 
-@keyframes dramaticExit {
+.card.next-2 {
+  transform: translateZ(-400px) translateY(16%) rotateX(14deg) scale(0.84);
+  opacity: 0.4;
+  z-index: 8;
+  filter: brightness(0.9);
+}
+
+.card.next-3 {
+  transform: translateZ(-600px) translateY(24%) rotateX(18deg) scale(0.76);
+  opacity: 0.2;
+  z-index: 7;
+  filter: brightness(0.85);
+}
+
+.card.prev-1 {
+  transform: translateZ(-200px) translateY(-8%) rotateX(-8deg) scale(0.92);
+  opacity: 0.5;
+  z-index: 6;
+  filter: brightness(0.95);
+}
+
+.card.prev-2 {
+  transform: translateZ(-400px) translateY(-16%) rotateX(-14deg) scale(0.84);
+  opacity: 0.3;
+  z-index: 5;
+  filter: brightness(0.9);
+}
+
+/* 아래로 스크롤: 다음 카드가 원통 위에서 내려옴 (뒤에서) */
+.card.animating-down-behind {
+  animation: cylinderDownFrom3D 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  z-index: 8 !important;
+}
+
+/* 위로 스크롤: 이전 카드가 원통 아래에서 올라옴 (뒤에서) */
+.card.animating-up-behind {
+  animation: cylinderUpFrom3D 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  z-index: 8 !important;
+}
+
+/* 아래로 스크롤: 현재 카드가 앞으로 넘어오며 위로 사라짐 */
+.card.animating-exit-forward-flip-up {
+  animation: cylinderExitForwardFlipUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  z-index: 20 !important;
+}
+
+/* 위로 스크롤: 현재 카드가 앞으로 넘어오며 아래로 사라짐 */
+.card.animating-exit-forward-flip {
+  animation: cylinderExitForwardFlip 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  z-index: 20 !important;
+}
+
+/* 원통 아래에서 위로 올라오며 앞으로 (위로 스크롤 시 이전 카드) */
+@keyframes cylinderUpFrom3D {
   0% {
-    transform: scale(1) translateY(0) translateZ(0) rotateX(0deg);
+    transform: translateZ(-350px) translateY(45%) rotateX(85deg) scale(0.78);
+    filter: brightness(0.88);
   }
   100% {
-    transform: scale(0.6) translateY(120%) translateZ(-400px) rotateX(-50deg);
+    transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
+    filter: brightness(1);
   }
 }
 
-.card.enter-up {
-  animation: dramaticEnter 0.9s forwards ease;
-}
-
-@keyframes dramaticEnter {
+/* 원통 위에서 아래로 내려오며 앞으로 (아래로 스크롤 시 다음 카드) */
+@keyframes cylinderDownFrom3D {
   0% {
-    transform: scale(0.7) translateY(100%) translateZ(500px) rotateX(20deg);
-  }
-  60% {
-    transform: scale(1.2) translateY(-10%) translateZ(100px) rotateX(0deg);
+    transform: translateZ(-350px) translateY(-45%) rotateX(-85deg) scale(0.78);
+    filter: brightness(0.88);
   }
   100% {
-    transform: scale(1) translateY(0) translateZ(0) rotateX(0deg);
+    transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
+    filter: brightness(1);
   }
 }
 
-/* 인디케이터 */
+/* 현재 카드가 앞으로 넘어오며 위로 사라짐 (아래로 스크롤 시) */
+@keyframes cylinderExitForwardFlipUp {
+  0% {
+    transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
+    filter: brightness(1);
+  }
+  100% {
+    transform: translateZ(250px) translateY(-80%) rotateX(95deg) scale(0.6);
+    filter: brightness(1.1);
+  }
+}
+
+/* 현재 카드가 앞으로 넘어오며 아래로 사라짐 (위로 스크롤 시) */
+@keyframes cylinderExitForwardFlip {
+  0% {
+    transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
+    filter: brightness(1);
+  }
+  100% {
+    transform: translateZ(250px) translateY(80%) rotateX(-95deg) scale(0.6);
+    filter: brightness(1.1);
+  }
+}
+
+/* Indicator */
 .indicator {
   position: fixed;
-  left: 20px;
+  right: 40px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
+  z-index: 100;
 }
 
 .dot {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: #ddd;
-  transition: background 0.3s, transform 0.3s;
+  background: #cbd5e1;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  position: relative;
+}
+
+.dot::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dot:hover {
+  background: #94a3b8;
+  transform: scale(1.2);
 }
 
 .dot.active {
-  background: #0f4c81;
-  transform: scale(1.6);
+  background: #3b82f6;
+  transform: scale(1.4);
+}
+
+.dot.active::after {
+  border-color: #3b82f6;
+  opacity: 0.3;
+}
+
+/* Instructions */
+.instructions {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #64748b;
+  font-size: 0.9rem;
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  z-index: 100;
+}
+
+.instructions span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.instructions kbd {
+  background: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: 40px 30px;
+  }
+  
+  .card h2 {
+    font-size: 2rem;
+  }
+  
+  .card p {
+    font-size: 1.1rem;
+  }
+
+  .indicator {
+    right: 20px;
+  }
+
+  .instructions {
+    font-size: 0.8rem;
+    gap: 16px;
+  }
 }

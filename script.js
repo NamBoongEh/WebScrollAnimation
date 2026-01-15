@@ -1,104 +1,105 @@
-let cards = Array.from(document.querySelectorAll(".card"));
-let dots = Array.from(document.querySelectorAll(".dot"));
+const cards = Array.from(document.querySelectorAll('.card'));
+const indicator = document.querySelector('.indicator');
 let current = 0;
-let isAnimating = false; // ✅ 누락된 선언 추가
+let isAnimating = false;
 
-function clampIndex(i) {
-  const len = cards.length;
-  return ((i % len) + len) % len;
+// 인디케이터 생성
+function createIndicator() {
+  indicator.innerHTML = '';
+  cards.forEach((_, i) => {
+    const dot = document.createElement('span');
+    dot.className = 'dot' + (i === current ? ' active' : '');
+    dot.addEventListener('click', () => navigateToCard(i));
+    indicator.appendChild(dot);
+  });
 }
 
-function updateDots() {
-  const indicator = document.querySelector(".indicator");
-  if (!indicator) return;
-
-  if (indicator.children.length !== cards.length) {
-    indicator.innerHTML = "";
-    for (let i = 0; i < cards.length; i++) {
-      const dot = document.createElement("span");
-      dot.className = "dot" + (i === current ? " active" : "");
-      indicator.appendChild(dot);
+// 카드 위치 업데이트
+function updateCardPositions() {
+  cards.forEach((card, i) => {
+    // 모든 애니메이션 클래스 제거
+    card.className = 'card';
+    
+    const diff = i - current;
+    
+    if (diff === 0) {
+      card.classList.add('active');
+    } else if (diff === 1) {
+      card.classList.add('next-1');
+    } else if (diff === 2) {
+      card.classList.add('next-2');
+    } else if (diff >= 3) {
+      card.classList.add('next-3');
+    } else if (diff === -1) {
+      card.classList.add('prev-1');
+    } else if (diff <= -2) {
+      card.classList.add('prev-2');
     }
-    dots = Array.from(document.querySelectorAll(".dot"));
-  } else {
-    dots.forEach((d, i) => d.classList.toggle("active", i === current));
-  }
+  });
+
+  // 인디케이터 업데이트
+  Array.from(indicator.children).forEach((dot, i) => {
+    dot.classList.toggle('active', i === current);
+  });
 }
 
-function showCard(nextIndexRaw) {
-  if (isAnimating || cards.length === 0) return;
-
-  const nextIndex = clampIndex(nextIndexRaw);
-  if (nextIndex === current) return;
+// 네비게이션
+function navigateToCard(nextIndex) {
+  if (isAnimating || nextIndex < 0 || nextIndex >= cards.length || nextIndex === current) {
+    return;
+  }
 
   isAnimating = true;
+  const direction = nextIndex > current ? 'down' : 'up';
+  const oldCurrent = current;
+  current = nextIndex;
 
-  const prev = current;
-  const next = nextIndex;
+  if (direction === 'down') {
+    // 아래로 스크롤: 현재 카드는 앞으로 넘어오며 위로 사라지고, 다음 카드는 위에서 내려옴
+    cards[oldCurrent].classList.add('animating-exit-forward-flip-up');
+    cards[current].classList.add('animating-down-behind');
+  } else {
+    // 위로 스크롤: 현재 카드는 앞으로 넘어오며 아래로 사라지고, 이전 카드는 아래에서 올라옴
+    cards[oldCurrent].classList.add('animating-exit-forward-flip');
+    cards[current].classList.add('animating-up-behind');
+  }
 
-  // 초기화: 모든 카드 뒤로
-  cards.forEach((card) => {
-    card.classList.remove("active", "enter-up", "exit-down");
-    card.style.zIndex = 1;
-  });
-
-  const prevCard = cards[prev];
-  const nextCard = cards[next];
-
-  // 애니메이션 중 z-index 우선순위 고정
-  prevCard.style.zIndex = 3; // 퇴장 카드 최상위
-  nextCard.style.zIndex = 2; // 입장 카드 중간
-
-  requestAnimationFrame(() => {
-    prevCard.classList.add("exit-down");
-    nextCard.classList.add("enter-up");
-
-    let doneCount = 0;
-    const onDone = () => {
-      doneCount++;
-      if (doneCount < 2) return;
-
-      // 최종 확정
-      current = next;
-      cards.forEach((card, i) => {
-        card.classList.remove("enter-up", "exit-down");
-        if (i === current) {
-          card.classList.add("active");
-          card.style.zIndex = 3;
-        } else {
-          card.style.zIndex = 1;
-        }
-      });
-
-      updateDots();
-      isAnimating = false;
-    };
-
-    prevCard.addEventListener("animationend", onDone, { once: true });
-    nextCard.addEventListener("animationend", onDone, { once: true });
-  });
+  setTimeout(() => {
+    updateCardPositions();
+    isAnimating = false;
+  }, 600);
 }
 
-// 네비게이션 (무한 루프)
-document.addEventListener("keydown", (e) => {
-  if (e.key === "ArrowDown") {
-    showCard(current + 1);
-  } else if (e.key === "ArrowUp") {
-    showCard(current - 1);
+// 키보드 네비게이션
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    navigateToCard(Math.min(current + 1, cards.length - 1));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    navigateToCard(Math.max(current - 1, 0));
   }
 });
 
-document.addEventListener("wheel", (e) => {
-  if (e.deltaY > 0) {
-    showCard(current + 1);
-  } else {
-    showCard(current - 1);
+// 마우스 휠 네비게이션 (높은 감도)
+let wheelAccumulator = 0;
+const wheelThreshold = 25; // 낮은 값 = 높은 감도
+
+document.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  
+  wheelAccumulator += Math.abs(e.deltaY);
+  
+  if (wheelAccumulator >= wheelThreshold && !isAnimating) {
+    if (e.deltaY > 0) {
+      navigateToCard(Math.min(current + 1, cards.length - 1));
+    } else {
+      navigateToCard(Math.max(current - 1, 0));
+    }
+    wheelAccumulator = 0;
   }
-});
+}, { passive: false });
 
 // 초기화
-cards.forEach((card, i) => {
-  card.classList.toggle("active", i === current);
-  card.style.zIndex = i === current ? 3 : 1;
-});
-updateDots();
+createIndicator();
+updateCardPositions();
