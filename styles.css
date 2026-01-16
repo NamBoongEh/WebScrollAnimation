@@ -36,11 +36,11 @@ body, html {
   justify-content: center;
   align-items: flex-start;
   transform-style: preserve-3d;
-  will-change: transform, opacity;
+  will-change: transform;
   backface-visibility: hidden;
   opacity: 0;
   pointer-events: none;
-  transition: box-shadow 0.4s ease;
+  transition: box-shadow 0.4s ease, transform 0.1s ease-out;
 }
 
 .card h2 {
@@ -102,10 +102,10 @@ body, html {
   filter: brightness(0.9);
 }
 
-/* 아래로 스크롤: 다음 카드가 원통 위에서 내려옴 (뒤에서) */
-.card.animating-down-behind {
-  animation: cylinderDownFrom3D 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  z-index: 8 !important;
+/* 아래로 스크롤: 다음 카드가 아래에서 위로 올라옴 (앞에서) */
+.card.animating-down-forward {
+  animation: cylinderUpFrom3D 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  z-index: 20 !important;
 }
 
 /* 위로 스크롤: 이전 카드가 원통 아래에서 올라옴 (뒤에서) */
@@ -114,10 +114,10 @@ body, html {
   z-index: 8 !important;
 }
 
-/* 아래로 스크롤: 현재 카드가 앞으로 넘어오며 위로 사라짐 */
-.card.animating-exit-forward-flip-up {
-  animation: cylinderExitForwardFlipUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  z-index: 20 !important;
+/* 아래로 스크롤: 현재 카드가 앞으로 넘어오며 아래로 사라짐 */
+.card.animating-exit-forward-flip-down {
+  animation: cylinderExitForwardFlip 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  z-index: 19 !important;
 }
 
 /* 위로 스크롤: 현재 카드가 앞으로 넘어오며 아래로 사라짐 */
@@ -126,7 +126,7 @@ body, html {
   z-index: 20 !important;
 }
 
-/* 원통 아래에서 위로 올라오며 앞으로 (위로 스크롤 시 이전 카드) */
+/* 원통 아래에서 위로 올라오며 앞으로 */
 @keyframes cylinderUpFrom3D {
   0% {
     transform: translateZ(-350px) translateY(45%) rotateX(85deg) scale(0.78);
@@ -138,31 +138,7 @@ body, html {
   }
 }
 
-/* 원통 위에서 아래로 내려오며 앞으로 (아래로 스크롤 시 다음 카드) */
-@keyframes cylinderDownFrom3D {
-  0% {
-    transform: translateZ(-350px) translateY(-45%) rotateX(-85deg) scale(0.78);
-    filter: brightness(0.88);
-  }
-  100% {
-    transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
-    filter: brightness(1);
-  }
-}
-
-/* 현재 카드가 앞으로 넘어오며 위로 사라짐 (아래로 스크롤 시) */
-@keyframes cylinderExitForwardFlipUp {
-  0% {
-    transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
-    filter: brightness(1);
-  }
-  100% {
-    transform: translateZ(250px) translateY(-80%) rotateX(95deg) scale(0.6);
-    filter: brightness(1.1);
-  }
-}
-
-/* 현재 카드가 앞으로 넘어오며 아래로 사라짐 (위로 스크롤 시) */
+/* 현재 카드가 앞으로 넘어오며 아래로 사라짐 */
 @keyframes cylinderExitForwardFlip {
   0% {
     transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
@@ -249,6 +225,54 @@ body, html {
   font-size: 0.85rem;
 }
 
+/* Page Title Indicator */
+.page-titles {
+  position: fixed;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 20px;
+  z-index: 100;
+  align-items: flex-end;
+}
+
+.page-title {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  padding: 8px 16px;
+  background: transparent;
+  border-radius: 8px;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  font-weight: 500;
+  position: relative;
+  height: 36px;
+  display: flex;
+  align-items: center;
+}
+
+.page-title::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 8px;
+  transform: scaleY(0);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom;
+}
+
+.page-title.active {
+  color: #3b82f6;
+  font-weight: 600;
+  height: 52px;
+}
+
+.page-title.active::before {
+  transform: scaleY(1);
+}
+
 @media (max-width: 768px) {
   .card {
     padding: 40px 30px;
@@ -269,5 +293,20 @@ body, html {
   .instructions {
     font-size: 0.8rem;
     gap: 16px;
+  }
+
+  .page-titles {
+    top: 20px;
+    gap: 12px;
+  }
+
+  .page-title {
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    height: 32px;
+  }
+
+  .page-title.active {
+    height: 44px;
   }
 }
