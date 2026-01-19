@@ -1,5 +1,6 @@
 const cards = Array.from(document.querySelectorAll('.card'));
 const indicator = document.querySelector('.indicator');
+const closeButtons = document.querySelectorAll('.close-button');
 let current = 0;
 let isAnimating = false;
 let mouseX = 0;
@@ -7,35 +8,6 @@ let mouseY = 0;
 let currentMouseX = 0;
 let currentMouseY = 0;
 let isFullscreen = false;
-
-// 닫기 버튼 생성
-const closeButton = document.createElement('button');
-closeButton.className = 'close-button';
-closeButton.textContent = '닫기';
-document.body.appendChild(closeButton);
-
-// 페이지 타이틀 생성 (네모 형태)
-const pageTitlesContainer = document.createElement('div');
-pageTitlesContainer.className = 'page-titles';
-document.body.appendChild(pageTitlesContainer);
-
-function createPageTitles() {
-  pageTitlesContainer.innerHTML = '';
-  for (let i = 0; i < cards.length; i++) {
-    const titleEl = document.createElement('div');
-    titleEl.className = 'page-title' + (i === current ? ' active' : '');
-    titleEl.addEventListener('click', () => {
-      if (!isFullscreen) navigateToCard(i);
-    });
-    pageTitlesContainer.appendChild(titleEl);
-  }
-}
-
-function updatePageTitles() {
-  Array.from(pageTitlesContainer.children).forEach((titleEl, i) => {
-    titleEl.classList.toggle('active', i === current);
-  });
-}
 
 // 인디케이터 생성
 function createIndicator() {
@@ -78,31 +50,107 @@ function updateCardPositions() {
   });
 }
 
+// 전체화면 진입 시 히스토리 추가
+function enterFullscreen(card) {
+  isFullscreen = true;
+  
+  // 현재 카드의 위치와 크기 저장
+  const rect = card.getBoundingClientRect();
+  
+  // 카드를 body로 이동시켜서 card-stack의 transform 영향을 받지 않도록 함
+  document.body.appendChild(card);
+  
+  // 현재 위치에서 시작하도록 설정
+  card.style.position = 'fixed';
+  card.style.top = rect.top + 'px';
+  card.style.left = rect.left + 'px';
+  card.style.width = rect.width + 'px';
+  card.style.height = rect.height + 'px';
+  card.style.transition = 'none';
+  
+  // 강제 reflow
+  card.offsetHeight;
+  
+  // 애니메이션 시작
+  card.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+  card.style.top = '0';
+  card.style.left = '0';
+  card.style.width = '100vw';
+  card.style.height = '100vh';
+  card.style.borderRadius = '0';
+  card.classList.add('fullscreen');
+  
+  document.body.style.overflow = 'hidden';
+  // 히스토리에 상태 추가
+  window.history.pushState({ fullscreen: true }, '');
+}
+
+// 전체화면 해제 함수
+function exitFullscreen() {
+  const activeCard = cards[current];
+  const cardStack = document.querySelector('.card-stack');
+  const stackRect = cardStack.getBoundingClientRect();
+  
+  // 목표 위치 계산 (card-stack 중앙)
+  const targetWidth = stackRect.width;
+  const targetHeight = stackRect.height;
+  const targetTop = stackRect.top;
+  const targetLeft = stackRect.left;
+  
+  // 축소 애니메이션
+  activeCard.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+  activeCard.style.top = targetTop + 'px';
+  activeCard.style.left = targetLeft + 'px';
+  activeCard.style.width = targetWidth + 'px';
+  activeCard.style.height = targetHeight + 'px';
+  activeCard.style.borderRadius = '24px';
+  
+  setTimeout(() => {
+    activeCard.classList.remove('fullscreen');
+    activeCard.style.position = '';
+    activeCard.style.top = '';
+    activeCard.style.left = '';
+    activeCard.style.width = '';
+    activeCard.style.height = '';
+    activeCard.style.borderRadius = '';
+    activeCard.style.transition = '';
+    
+    // 카드를 다시 card-stack으로 이동
+    cardStack.appendChild(activeCard);
+    
+    isFullscreen = false;
+    document.body.style.overflow = '';
+    
+    // 카드 위치 재설정
+    updateCardPositions();
+  }, 600);
+}
+
 // 카드 클릭 이벤트 - 전체화면
 cards.forEach((card, index) => {
   card.addEventListener('click', (e) => {
     if (index === current && !isFullscreen && !isAnimating) {
       e.stopPropagation();
-      isFullscreen = true;
-      card.classList.add('fullscreen');
-      closeButton.classList.add('visible');
-      document.body.style.overflow = 'hidden';
+      enterFullscreen(card);
     }
   });
 });
 
-// 닫기 버튼 클릭
-closeButton.addEventListener('click', () => {
+// 뒤로가기 버튼 클릭 - 브라우저 뒤로가기
+closeButtons.forEach((btn) => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (isFullscreen) {
+      // 브라우저 뒤로가기 실행
+      window.history.back();
+    }
+  });
+});
+
+// 브라우저 뒤로가기 시 전체화면 해제 처리
+window.addEventListener('popstate', () => {
   if (isFullscreen) {
-    const activeCard = cards[current];
-    activeCard.classList.add('closing');
-    closeButton.classList.remove('visible');
-    
-    setTimeout(() => {
-      activeCard.classList.remove('fullscreen', 'closing');
-      isFullscreen = false;
-      document.body.style.overflow = '';
-    }, 500);
+    exitFullscreen();
   }
 });
 
@@ -118,20 +166,19 @@ function navigateToCard(nextIndex) {
   current = nextIndex;
 
   if (direction === 'down') {
-    // 아래로 스크롤: 현재 카드는 앞으로 나오며 위로 사라지고, 다음 카드는 위에서 내려옴 (거울모드)
-    cards[oldCurrent].classList.add('animating-exit-forward-flip-down');
-    cards[current].classList.add('animating-down-forward');
+    // 아래로 스크롤(휠 내릴때): 현재 카드는 뒤 아래로 작아지며, 다음 카드는 앞에서 기울어진채 올라옴
+    cards[oldCurrent].classList.add('animating-exit-down');
+    cards[current].classList.add('animating-enter-from-bottom');
   } else {
-    // 위로 스크롤: 현재 카드는 앞으로 넘어오며 아래로 사라지고, 이전 카드는 뒤에서 아래에서 올라옴
-    cards[oldCurrent].classList.add('animating-exit-forward-flip');
-    cards[current].classList.add('animating-up-behind');
+    // 위로 스크롤(휠 올릴때): 현재 카드는 아래로 기울어지며 내려가고, 이전 카드는 위로 올라오며 펴짐
+    cards[oldCurrent].classList.add('animating-exit-down-tilt');
+    cards[current].classList.add('animating-enter-from-top');
   }
 
   setTimeout(() => {
     updateCardPositions();
-    updatePageTitles();
     isAnimating = false;
-  }, 600);
+  }, 700);
 }
 
 // 키보드 네비게이션
@@ -166,9 +213,7 @@ document.addEventListener('wheel', (e) => {
 
 // 초기화
 createIndicator();
-createPageTitles();
 updateCardPositions();
-updatePageTitles();
 
 // 마우스 추적 및 카드 반응
 document.addEventListener('mousemove', (e) => {

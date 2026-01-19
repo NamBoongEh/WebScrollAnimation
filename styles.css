@@ -26,7 +26,10 @@ body, html {
 
 .card {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
   border-radius: 24px;
   box-shadow: 0 40px 80px rgba(0, 0, 0, 0.12), 0 10px 30px rgba(0, 0, 0, 0.08);
@@ -41,6 +44,99 @@ body, html {
   opacity: 0;
   pointer-events: none;
   transition: box-shadow 0.4s ease, transform 0.1s ease-out;
+  cursor: pointer;
+}
+
+.card.fullscreen {
+  position: fixed;
+  z-index: 1000 !important;
+  opacity: 1 !important;
+  pointer-events: auto;
+  overflow-y: auto;
+  padding: 80px 50px 120px;
+  cursor: default;
+  box-shadow: none !important;
+  filter: none !important;
+  inset: auto;
+  animation: expandCard 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes expandCard {
+  0% {
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    border-radius: 24px;
+  }
+  100% {
+    width: 100vw;
+    height: 100vh;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 0;
+  }
+}
+
+.card.fullscreen.closing {
+  animation: shrinkCard 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes shrinkCard {
+  0% {
+    width: 100vw;
+    height: 100vh;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 0;
+    opacity: 1;
+  }
+  100% {
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    transform: none;
+    border-radius: 24px;
+    opacity: 1;
+  }
+}
+
+.close-button {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 16px 48px;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+  transition: all 0.3s ease;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.card.fullscreen .close-button {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.close-button:hover {
+  background: #2563eb;
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4);
+}
+
+.close-button:active {
+  transform: translateX(-50%) translateY(0);
 }
 
 .card h2 {
@@ -60,7 +156,7 @@ body, html {
 }
 
 .card.active {
-  transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
+  transform: translateZ(0px) translateY(0%) rotateX(0deg) rotateY(-5deg) scale(1);
   opacity: 1;
   z-index: 10;
   pointer-events: auto;
@@ -68,85 +164,122 @@ body, html {
 }
 
 .card.next-1 {
-  transform: translateZ(-200px) translateY(8%) rotateX(8deg) scale(0.92);
-  opacity: 0.7;
+  transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5);
+  opacity: 1;
   z-index: 9;
-  filter: brightness(0.95);
+  filter: brightness(0.9);
+  pointer-events: none;
 }
 
 .card.next-2 {
-  transform: translateZ(-400px) translateY(16%) rotateX(14deg) scale(0.84);
-  opacity: 0.4;
+  transform: translateZ(-200px) translateY(70%) rotateX(0deg) scale(0.4);
+  opacity: 0;
   z-index: 8;
-  filter: brightness(0.9);
+  filter: brightness(0.85);
+  pointer-events: none;
 }
 
 .card.next-3 {
-  transform: translateZ(-600px) translateY(24%) rotateX(18deg) scale(0.76);
-  opacity: 0.2;
+  transform: translateZ(-300px) translateY(80%) rotateX(0deg) scale(0.3);
+  opacity: 0;
   z-index: 7;
-  filter: brightness(0.85);
+  filter: brightness(0.75);
+  pointer-events: none;
 }
 
 .card.prev-1 {
-  transform: translateZ(-200px) translateY(-8%) rotateX(-8deg) scale(0.92);
-  opacity: 0.5;
+  transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5);
+  opacity: 1;
   z-index: 6;
-  filter: brightness(0.95);
+  filter: brightness(0.9);
+  pointer-events: none;
 }
 
 .card.prev-2 {
-  transform: translateZ(-400px) translateY(-16%) rotateX(-14deg) scale(0.84);
-  opacity: 0.3;
+  transform: translateZ(-200px) translateY(70%) rotateX(0deg) scale(0.4);
+  opacity: 0;
   z-index: 5;
-  filter: brightness(0.9);
+  filter: brightness(0.85);
+  pointer-events: none;
 }
 
-/* 아래로 스크롤: 다음 카드가 아래에서 위로 올라옴 (앞에서) */
-.card.animating-down-forward {
-  animation: cylinderUpFrom3D 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  z-index: 20 !important;
+/* 휠 내릴때: 현재 카드가 뒤로 내려가며 사라짐 */
+.card.animating-exit-down {
+  animation: exitDown 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  z-index: 9 !important;
 }
 
-/* 위로 스크롤: 이전 카드가 원통 아래에서 올라옴 (뒤에서) */
-.card.animating-up-behind {
-  animation: cylinderUpFrom3D 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  z-index: 8 !important;
+/* 휠 내릴때: 다음 카드가 앞에서 기울어진채 올라옴 */
+.card.animating-enter-from-bottom {
+  animation: enterFromBottom 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  z-index: 10 !important;
 }
 
-/* 아래로 스크롤: 현재 카드가 앞으로 넘어오며 아래로 사라짐 */
-.card.animating-exit-forward-flip-down {
-  animation: cylinderExitForwardFlip 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  z-index: 19 !important;
+/* 휠 올릴때: 현재 카드가 아래로 내려가며 앞으로 기울어짐 */
+.card.animating-exit-down-tilt {
+  animation: exitDownTilt 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  z-index: 10 !important;
 }
 
-/* 위로 스크롤: 현재 카드가 앞으로 넘어오며 아래로 사라짐 */
-.card.animating-exit-forward-flip {
-  animation: cylinderExitForwardFlip 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  z-index: 20 !important;
+/* 휠 올릴때: 이전 카드가 뒤에서 위로 올라오며 커짐 */
+.card.animating-enter-from-top {
+  animation: enterFromTop 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  z-index: 9 !important;
 }
 
-/* 원통 아래에서 위로 올라오며 앞으로 */
-@keyframes cylinderUpFrom3D {
+/* 현재 카드가 뒤 아래로 내려가며 50% 작아짐 (휠 내릴때) */
+@keyframes exitDown {
   0% {
-    transform: translateZ(-350px) translateY(45%) rotateX(85deg) scale(0.78);
-    filter: brightness(0.88);
+    transform: translateZ(0px) translateY(0%) rotateX(0deg) rotateY(-5deg) scale(1);
+    opacity: 1;
+    filter: brightness(1);
   }
   100% {
-    transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
+    transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5);
+    opacity: 1;
+    filter: brightness(0.9);
+  }
+}
+
+/* 다음 카드가 앞으로 기울어진채 아래에서 올라옴 (휠 내릴때) */
+@keyframes enterFromBottom {
+  0% {
+    transform: translateZ(150px) translateY(120%) rotateX(-50deg) scale(1);
+    opacity: 1;
+    filter: brightness(1);
+  }
+  100% {
+    transform: translateZ(0px) translateY(0%) rotateX(0deg) rotateY(-5deg) scale(1);
+    opacity: 1;
     filter: brightness(1);
   }
 }
 
-/* 현재 카드가 앞으로 넘어오며 아래로 사라짐 */
-@keyframes cylinderExitForwardFlip {
+/* 현재 카드가 아래로 내려가며 앞으로 기울어짐 (휠 올릴때) */
+@keyframes exitDownTilt {
   0% {
-    transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
+    transform: translateZ(0px) translateY(0%) rotateX(0deg) rotateY(-5deg) scale(1);
+    opacity: 1;
     filter: brightness(1);
   }
   100% {
-    transform: translateZ(250px) translateY(80%) rotateX(-95deg) scale(0.6);
-    filter: brightness(1.1);
+    transform: translateZ(150px) translateY(120%) rotateX(-50deg) scale(1);
+    opacity: 0;
+    filter: brightness(1);
+  }
+}
+
+/* 이전 카드가 뒤 아래에서 위로 올라오며 커짐 (휠 올릴때) */
+@keyframes enterFromTop {
+  0% {
+    transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5);
+    opacity: 1;
+    filter: brightness(0.9);
+  }
+  100% {
+    transform: translateZ(0px) translateY(0%) rotateX(0deg) rotateY(-5deg) scale(1);
+    opacity: 1;
+    filter: brightness(1);
   }
 }
 
@@ -225,54 +358,6 @@ body, html {
   font-size: 0.85rem;
 }
 
-/* Page Title Indicator */
-.page-titles {
-  position: fixed;
-  top: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 20px;
-  z-index: 100;
-  align-items: flex-end;
-}
-
-.page-title {
-  font-size: 0.9rem;
-  color: #94a3b8;
-  padding: 8px 16px;
-  background: transparent;
-  border-radius: 8px;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  cursor: pointer;
-  font-weight: 500;
-  position: relative;
-  height: 36px;
-  display: flex;
-  align-items: center;
-}
-
-.page-title::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(59, 130, 246, 0.1);
-  border-radius: 8px;
-  transform: scaleY(0);
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  transform-origin: bottom;
-}
-
-.page-title.active {
-  color: #3b82f6;
-  font-weight: 600;
-  height: 52px;
-}
-
-.page-title.active::before {
-  transform: scaleY(1);
-}
-
 @media (max-width: 768px) {
   .card {
     padding: 40px 30px;
@@ -286,6 +371,10 @@ body, html {
     font-size: 1.1rem;
   }
 
+  .card.fullscreen {
+    padding: 60px 30px 100px;
+  }
+
   .indicator {
     right: 20px;
   }
@@ -295,18 +384,9 @@ body, html {
     gap: 16px;
   }
 
-  .page-titles {
-    top: 20px;
-    gap: 12px;
-  }
-
-  .page-title {
-    font-size: 0.8rem;
-    padding: 6px 12px;
-    height: 32px;
-  }
-
-  .page-title.active {
-    height: 44px;
+  .close-button {
+    bottom: 30px;
+    padding: 14px 40px;
+    font-size: 0.9rem;
   }
 }
