@@ -1,52 +1,74 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cylindrical Card Motion</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div class="card-stack">
-      <section class="card active">
-        <h2>Value 1 — Craft</h2>
-        <p>세심한 디테일과 손끝의 감각으로<br />완성되는 장인정신.</p>
-        <button class="close-button">뒤로가기</button>
-      </section>
-      <section class="card">
-        <h2>Value 2 — Curiosity</h2>
-        <p>질문을 멈추지 않는 태도로<br />새로운 가능성을 탐구합니다.</p>
-        <button class="close-button">뒤로가기</button>
-      </section>
-      <section class="card">
-        <h2>Value 3 — Integrity</h2>
-        <p>일관된 기준과 투명성으로<br />신뢰를 구축합니다.</p>
-        <button class="close-button">뒤로가기</button>
-      </section>
-      <section class="card">
-        <h2>Value 4 — Innovation</h2>
-        <p>끊임없는 혁신과 도전으로<br />새로운 가치를 창출합니다.</p>
-        <button class="close-button">뒤로가기</button>
-      </section>
-      <section class="card">
-        <h2>Value 5 — Collaboration</h2>
-        <p>함께하는 힘을 믿으며<br />시너지를 만들어갑니다.</p>
-        <button class="close-button">뒤로가기</button>
-      </section>
-      <section class="card">
-        <h2>Value 6 — Excellence</h2>
-        <p>최고를 향한 열정으로<br />탁월함을 추구합니다.</p>
-        <button class="close-button">뒤로가기</button>
-      </section>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>■□□□□□</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="card-stack">
+    <section class="card active" id="card-1">
+      <h2 class="card-number">1</h2>
+      <div class="grid-container" id="grid-container-1">
+        <div class="grid-item" data-index="0"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
+        <div class="grid-item" data-index="1"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
+        <div class="grid-item" data-index="2"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
+        <div class="grid-item" data-index="3"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
+        <div class="grid-item" data-index="4"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
+        <div class="grid-item" data-index="5"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
+      </div>
+      <img src="Image/human.jpg" alt="Human" class="human-image" id="human-image">
+      <button class="close-button">뒤로가기</button>
+    </section>
+    <section class="card" id="card-2">
+      <h2 class="card-number">2</h2>
+      <div class="grid-container" id="grid-container-2">
+        <div class="grid-item video-item" data-index="0"><div class="grid-front"><span class="play-icon">▶</span></div><div class="grid-back"><video class="grid-video" src="Video/vid1.mp4" muted></video></div></div>
+        <div class="grid-item video-item" data-index="1"><div class="grid-front"><span class="play-icon">▶</span></div><div class="grid-back"><video class="grid-video" src="Video/vid2.mp4" muted></video></div></div>
+        <div class="grid-item video-item" data-index="2"><div class="grid-front"><span class="play-icon">▶</span></div><div class="grid-back"><video class="grid-video" src="Video/vid3.mp4" muted></video></div></div>
+        <div class="grid-item video-item" data-index="3"><div class="grid-front"><span class="play-icon">▶</span></div><div class="grid-back"><video class="grid-video" src="Video/vid4.mp4" muted></video></div></div>
+        <div class="grid-item video-item" data-index="4"><div class="grid-front"><span class="play-icon">▶</span></div><div class="grid-back"><video class="grid-video" src="Video/vid5.mp4" muted></video></div></div>
+        <div class="grid-item video-item" data-index="5"><div class="grid-front"><span class="play-icon">▶</span></div><div class="grid-back"><video class="grid-video" src="Video/vid6.mp4" muted></video></div></div>
+      </div>
+      <button class="close-button">뒤로가기</button>
+    </section>
+    <section class="card" id="card-3">
+      <h2 class="card-number">3</h2>
+      <button class="close-button">뒤로가기</button>
+    </section>
+    <section class="card" id="card-4">
+      <h2 class="card-number">4</h2>
+      <button class="close-button">뒤로가기</button>
+    </section>
+    <section class="card" id="card-5">
+      <h2 class="card-number">5</h2>
+      <button class="close-button">뒤로가기</button>
+    </section>
+    <section class="card" id="card-6">
+      <h2 class="card-number">6</h2>
+      <button class="close-button">뒤로가기</button>
+    </section>
+  </div>
+
+  <nav class="indicator"></nav>
+
+  <!-- 팝업 -->
+  <div class="popup-overlay" id="popup-overlay">
+    <div class="popup-content" id="popup-content">
+      <h2>팝업 제목</h2>
+      <p>팝업 내용이 여기에 표시됩니다.</p>
+      <button class="popup-close-button" id="popup-close">뒤로가기</button>
     </div>
+  </div>
 
-    <nav class="indicator"></nav>
+  <!-- 음소거 버튼 -->
+  <button class="mute-button" id="mute-button">
+    <span class="mute-icon" id="mute-icon">🔇</span>
+  </button>
 
-    <div class="instructions">
-      <span><kbd>↑</kbd> <kbd>↓</kbd> 키보드</span>
-      <span>또는 마우스 휠로 이동</span>
-    </div>
-
-    <script src="script.js"></script>
-  </body>
+  <script src="script.js"></script>
+  <script src="card1.js"></script>
+  <script src="card2.js"></script>
+</body>
 </html>

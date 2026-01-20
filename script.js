@@ -31,16 +31,15 @@ function updateCardPositions() {
     
     if (diff === 0) {
       card.classList.add('active');
-    } else if (diff === 1) {
-      card.classList.add('next-1');
-    } else if (diff === 2) {
-      card.classList.add('next-2');
-    } else if (diff >= 3) {
-      card.classList.add('next-3');
     } else if (diff === -1) {
+      // 바로 이전 카드 (현재 카드 뒤에 보임)
       card.classList.add('prev-1');
     } else if (diff <= -2) {
+      // 그 이전 카드들 (안 보임)
       card.classList.add('prev-2');
+    } else if (diff >= 1) {
+      // 다음 카드들 (안 보임)
+      card.classList.add('next-hidden');
     }
   });
 
@@ -166,19 +165,32 @@ function navigateToCard(nextIndex) {
   current = nextIndex;
 
   if (direction === 'down') {
-    // 아래로 스크롤(휠 내릴때): 현재 카드는 뒤 아래로 작아지며, 다음 카드는 앞에서 기울어진채 올라옴
+    // 아래로 스크롤(휠 내릴때)
+    // 현재 카드 → prev-1 위치로 내려감
     cards[oldCurrent].classList.add('animating-exit-down');
+    // 다음 카드 → active 위치로 올라옴
     cards[current].classList.add('animating-enter-from-bottom');
+    // 이전 카드(있다면) → prev-2 위치로 더 내려감
+    if (oldCurrent > 0) {
+      cards[oldCurrent - 1].classList.add('animating-prev-exit');
+    }
   } else {
-    // 위로 스크롤(휠 올릴때): 현재 카드는 아래로 기울어지며 내려가고, 이전 카드는 위로 올라오며 펴짐
+    // 위로 스크롤(휠 올릴때)
+    // 현재 카드 → 아래로 내려가며 사라짐
     cards[oldCurrent].classList.add('animating-exit-down-tilt');
+    // 이전 카드 → active 위치로 올라옴
     cards[current].classList.add('animating-enter-from-top');
+    // 그 이전 카드(있다면) → prev-1 위치로 올라옴
+    if (current > 0) {
+      cards[current - 1].classList.add('animating-prev-enter');
+    }
   }
 
   setTimeout(() => {
     updateCardPositions();
+    updateTitle();
     isAnimating = false;
-  }, 700);
+  }, 1000);
 }
 
 // 키보드 네비게이션
@@ -192,28 +204,29 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// 마우스 휠 네비게이션 (높은 감도)
-let wheelAccumulator = 0;
-const wheelThreshold = 25; // 낮은 값 = 높은 감도
-
+// 마우스 휠 네비게이션
 document.addEventListener('wheel', (e) => {
   e.preventDefault();
   
-  wheelAccumulator += Math.abs(e.deltaY);
+  if (isAnimating || isFullscreen) return;
   
-  if (wheelAccumulator >= wheelThreshold && !isAnimating) {
-    if (e.deltaY > 0) {
-      navigateToCard(Math.min(current + 1, cards.length - 1));
-    } else {
-      navigateToCard(Math.max(current - 1, 0));
-    }
-    wheelAccumulator = 0;
+  if (e.deltaY > 0) {
+    navigateToCard(Math.min(current + 1, cards.length - 1));
+  } else if (e.deltaY < 0) {
+    navigateToCard(Math.max(current - 1, 0));
   }
 }, { passive: false });
 
 // 초기화
 createIndicator();
 updateCardPositions();
+updateTitle();
+
+// 타이틀 업데이트 함수
+function updateTitle() {
+  const boxes = cards.map((_, i) => i === current ? '■' : '□');
+  document.title = boxes.join('');
+}
 
 // 마우스 추적 및 카드 반응
 document.addEventListener('mousemove', (e) => {
@@ -231,17 +244,29 @@ function animateCardParallax() {
     const cardCenterX = rect.left + rect.width / 2;
     const cardCenterY = rect.top + rect.height / 2;
 
+    // 마우스와 카드 중심 사이의 거리 계산
     const deltaX = currentMouseX - cardCenterX;
     const deltaY = currentMouseY - cardCenterY;
-
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // 최대 거리 (화면 대각선의 절반)
     const maxDistance = Math.sqrt(window.innerWidth * window.innerWidth + window.innerHeight * window.innerHeight) / 2;
-    const normalizedDistance = Math.min(distance / maxDistance, 1);
+    
+    // 거리가 멀수록 강하게, 가까울수록 약하게
+    const distanceRatio = Math.min(distance / maxDistance, 1);
+    const pushStrength = distanceRatio * 50; // 최대 50px 밀림
+    
+    // 마우스 반대 방향으로 밀려남
+    const angle = Math.atan2(deltaY, deltaX);
+    const moveX = -Math.cos(angle) * pushStrength;
+    const moveY = -Math.sin(angle) * pushStrength;
 
-    const moveX = -deltaX * 0.02 * normalizedDistance;
-    const moveY = -deltaY * 0.02 * normalizedDistance;
-
-    activeCard.style.transform = `translateZ(0px) translateY(0%) rotateX(0deg) rotateY(-5deg) scale(1) translate(${moveX}px, ${moveY}px)`;
+    activeCard.style.transform = `translateZ(0px) translate(${moveX}px, ${moveY}px) scale(1)`;
+    
+    // 그림자도 밀리는 방향으로 변화
+    const shadowX = Math.cos(angle) * 20 * distanceRatio;
+    const shadowY = Math.sin(angle) * 20 * distanceRatio + 40;
+    activeCard.style.boxShadow = `${shadowX}px ${shadowY}px 80px rgba(0, 0, 0, 0.12), ${shadowX/2}px ${shadowY/2}px 30px rgba(0, 0, 0, 0.08)`;
   }
 
   requestAnimationFrame(animateCardParallax);
