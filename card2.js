@@ -9,34 +9,42 @@
   // 전역 음소거 상태 (기본: 음소거)
   let isMuted = true;
   
+  // 각 비디오의 재생 상태 저장
+  const videoStates = new Map();
+  
   if (!card2 || !gridContainer) return;
   
-  // 비디오 아이템 클릭 시 뒤집고 재생
-  videoItems.forEach((item) => {
+  // 비디오 아이템 클릭 시 바로 재생/일시정지
+  videoItems.forEach((item, index) => {
     const video = item.querySelector('.grid-video');
     
     if (!video) return;
     
-    // 아이템 클릭 시 뒤집고 재생
+    // 초기 상태 저장
+    videoStates.set(index, { wasPlaying: false });
+    
+    // 아이템 클릭 시 재생/일시정지 토글
     item.addEventListener('click', (e) => {
       if (!card2.classList.contains('fullscreen')) return;
       
-      // 이미 재생 중이면 무시
-      if (item.classList.contains('flipped') && !video.paused) return;
-      
-      // 뒤집기
-      item.classList.add('flipped');
-      
-      // 음소거 상태 적용 후 재생
-      video.muted = isMuted;
-      video.currentTime = 0;
-      video.play();
+      // 재생 중이면 일시정지, 아니면 재생
+      if (video.paused) {
+        video.muted = isMuted;
+        video.play();
+        item.classList.add('playing');
+        videoStates.get(index).wasPlaying = true;
+      } else {
+        video.pause();
+        item.classList.remove('playing');
+        videoStates.get(index).wasPlaying = false;
+      }
     });
     
-    // 영상 끝나면 다시 뒤집기
+    // 영상 끝나면 처음으로
     video.addEventListener('ended', () => {
-      item.classList.remove('flipped');
+      item.classList.remove('playing');
       video.currentTime = 0;
+      videoStates.get(index).wasPlaying = false;
     });
   });
   
@@ -63,4 +71,29 @@
       });
     });
   }
+  
+  // 카드 닫기 시 모든 비디오 일시정지 (위치는 유지)
+  window.pauseAllCard2Videos = function() {
+    videoItems.forEach((item, index) => {
+      const video = item.querySelector('.grid-video');
+      if (video && !video.paused) {
+        video.pause();
+        item.classList.remove('playing');
+        videoStates.get(index).wasPlaying = true;
+      }
+    });
+  };
+  
+  // 카드 다시 열 때 재생 중이던 비디오 이어서 재생
+  window.resumeCard2Videos = function() {
+    videoItems.forEach((item, index) => {
+      const video = item.querySelector('.grid-video');
+      const state = videoStates.get(index);
+      if (video && state && state.wasPlaying) {
+        video.muted = isMuted;
+        video.play();
+        item.classList.add('playing');
+      }
+    });
+  };
 })();

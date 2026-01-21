@@ -114,6 +114,18 @@
     });
   }
   
+  // 카드1 닫을 때 그리드 상태 초기화 함수
+  window.resetCard1Grid = function() {
+    gridItems.forEach(item => {
+      item.classList.remove('flipped');
+    });
+    // human 위치도 초기화
+    humanPosRatioX = 0.5;
+    humanPosRatioY = 0.3;
+    targetRatioX = 0.5;
+    targetRatioY = 0.3;
+  };
+  
   // 초기화
   updateHumanPosition();
 })();

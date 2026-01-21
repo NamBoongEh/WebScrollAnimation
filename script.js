@@ -82,6 +82,13 @@ function enterFullscreen(card) {
   document.body.style.overflow = 'hidden';
   // 히스토리에 상태 추가
   window.history.pushState({ fullscreen: true }, '');
+  
+  // 카드2인 경우 비디오 재개
+  if (card.id === 'card-2' && typeof window.resumeCard2Videos === 'function') {
+    setTimeout(() => {
+      window.resumeCard2Videos();
+    }, 600);
+  }
 }
 
 // 전체화면 해제 함수
@@ -89,6 +96,21 @@ function exitFullscreen() {
   const activeCard = cards[current];
   const cardStack = document.querySelector('.card-stack');
   const stackRect = cardStack.getBoundingClientRect();
+  
+  // 비디오 일시정지 (위치 유지)
+  if (typeof window.pauseAllCard2Videos === 'function') {
+    window.pauseAllCard2Videos();
+  }
+  
+  // 카드3 비디오 정지
+  if (typeof window.stopCard3Video === 'function') {
+    window.stopCard3Video();
+  }
+  
+  // 카드1 그리드 초기화
+  if (typeof window.resetCard1Grid === 'function') {
+    window.resetCard1Grid();
+  }
   
   // 목표 위치 계산 (card-stack 중앙)
   const targetWidth = stackRect.width;
