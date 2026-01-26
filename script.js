@@ -226,18 +226,102 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// 마우스 휠 네비게이션
+// 마우스 휠 네비게이션 - 반동 효과 포함
+let wheelTimeout = null;
+let lastWheelDelta = 0;
+
+function applyBounceEffect(deltaY) {
+  const activeCard = cards[current];
+  if (!activeCard || isAnimating || isFullscreen) return;
+  
+  // 반동 양 계산
+  const bounceAmount = Math.min(Math.abs(deltaY) * 0.3, 25);
+  const bounceY = deltaY > 0 ? -bounceAmount : bounceAmount;
+  
+  activeCard.style.transition = 'transform 0.05s ease-out';
+  activeCard.style.transform = `translateZ(0px) translateY(${bounceY}px) scale(1)`;
+}
+
+function resetBounceEffect() {
+  const activeCard = cards[current];
+  if (!activeCard || isFullscreen) return;
+  
+  activeCard.style.transition = 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+  activeCard.style.transform = 'translateZ(0px) translateY(0px) scale(1)';
+  
+  setTimeout(() => {
+    if (activeCard && !activeCard.classList.contains('fullscreen')) {
+      activeCard.style.transition = '';
+    }
+  }, 500);
+}
+
 document.addEventListener('wheel', (e) => {
   e.preventDefault();
   
   if (isAnimating || isFullscreen) return;
   
+  lastWheelDelta = e.deltaY;
+  
+  // 반동 효과 적용
+  applyBounceEffect(e.deltaY);
+  
+  // 타임아웃 초기화
+  if (wheelTimeout) clearTimeout(wheelTimeout);
+  
+  // 카드 전환
   if (e.deltaY > 0) {
     navigateToCard(Math.min(current + 1, cards.length - 1));
   } else if (e.deltaY < 0) {
     navigateToCard(Math.max(current - 1, 0));
   }
+  
+  // 휠이 멈추면 반동 후 원위치
+  wheelTimeout = setTimeout(() => {
+    resetBounceEffect();
+  }, 100);
 }, { passive: false });
+
+// 터치 이벤트 (모바일 스와이프)
+let touchStartY = 0;
+let touchStartX = 0;
+let touchEndY = 0;
+let touchEndX = 0;
+const minSwipeDistance = 50;
+
+document.addEventListener('touchstart', (e) => {
+  touchStartY = e.touches[0].clientY;
+  touchStartX = e.touches[0].clientX;
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+  if (isFullscreen) return;
+  touchEndY = e.touches[0].clientY;
+  touchEndX = e.touches[0].clientX;
+}, { passive: true });
+
+document.addEventListener('touchend', (e) => {
+  if (isAnimating || isFullscreen) return;
+  
+  const deltaY = touchStartY - touchEndY;
+  const deltaX = touchStartX - touchEndX;
+  
+  // 수직 스와이프가 수평보다 클 때만 처리
+  if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minSwipeDistance) {
+    if (deltaY > 0) {
+      // 위로 스와이프 = 다음 카드
+      navigateToCard(Math.min(current + 1, cards.length - 1));
+    } else {
+      // 아래로 스와이프 = 이전 카드
+      navigateToCard(Math.max(current - 1, 0));
+    }
+  }
+  
+  touchStartY = 0;
+  touchEndY = 0;
+  touchStartX = 0;
+  touchEndX = 0;
+}, { passive: true });
 
 // 초기화
 createIndicator();

@@ -195,6 +195,40 @@
   
   card3.addEventListener('wheel', handleWheel, { passive: false });
   
+  // 터치 이벤트 (모바일)
+  let touchStartY = 0;
+  let touchCurrentY = 0;
+  let isTouching = false;
+  
+  card3.addEventListener('touchstart', (e) => {
+    if (!card3.classList.contains('fullscreen')) return;
+    if (videoPopup.classList.contains('active')) return;
+    
+    touchStartY = e.touches[0].clientY;
+    touchCurrentY = touchStartY;
+    isTouching = true;
+  }, { passive: true });
+  
+  card3.addEventListener('touchmove', (e) => {
+    if (!card3.classList.contains('fullscreen')) return;
+    if (videoPopup.classList.contains('active')) return;
+    if (!isTouching) return;
+    
+    const newY = e.touches[0].clientY;
+    const deltaY = touchCurrentY - newY;
+    touchCurrentY = newY;
+    
+    // 드래그 방향에 따라 스크롤
+    const delta = deltaY * 0.3;
+    scrollProgress = Math.max(0, Math.min(maxScroll, scrollProgress + delta));
+    
+    updateFirstPersonView();
+  }, { passive: true });
+  
+  card3.addEventListener('touchend', () => {
+    isTouching = false;
+  }, { passive: true });
+  
   // ESC
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && videoPopup.classList.contains('active')) {

@@ -53,12 +53,24 @@ body, html {
   opacity: 1 !important;
   pointer-events: auto;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 80px 50px 120px;
   cursor: default;
   box-shadow: none !important;
   filter: none !important;
   inset: auto;
   animation: expandCard 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.card.fullscreen::-webkit-scrollbar {
+  display: none;
+}
+
+/* 카드 확대/축소 중 오버플로우 숨김 */
+.card {
+  overflow: hidden;
 }
 
 @keyframes expandCard {
@@ -183,7 +195,6 @@ body, html {
   border-radius: 50%;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   cursor: pointer;
-  transition: box-shadow 0.3s ease;
   z-index: 15;
   pointer-events: none;
 }
@@ -194,20 +205,19 @@ body, html {
 
 /* 그리드 컨테이너 */
 .grid-container {
-  display: none;
+  display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 8px;
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   width: 70%;
-  max-width: 350px;
+  max-width: 280px;
   z-index: 10;
 }
 
 .card.fullscreen .grid-container {
-  display: grid;
   width: 60%;
   max-width: 450px;
   gap: 15px;
@@ -215,7 +225,7 @@ body, html {
 
 /* card1 그리드 */
 #grid-container-1 {
-  max-width: 320px;
+  max-width: 250px;
 }
 
 .card.fullscreen #grid-container-1 {
@@ -224,20 +234,39 @@ body, html {
 
 /* card2 비디오 그리드 */
 #grid-container-2 {
-  max-width: 350px;
+  max-width: 280px;
+  grid-auto-rows: 50px;
 }
 
 .card.fullscreen #grid-container-2 {
-  width: 70%;
-  max-width: 600px;
+  width: 85%;
+  max-width: 700px;
   height: auto;
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(2, 1fr);
+  grid-auto-rows: 100px;
   gap: 12px;
 }
 
+/* 다양한 크기의 그리드 아이템 */
 #grid-container-2 .grid-item {
-  aspect-ratio: 16/9;
+  aspect-ratio: auto;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+#grid-container-2 .size-large {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+#grid-container-2 .size-medium {
+  grid-column: span 1;
+  grid-row: span 2;
+}
+
+#grid-container-2 .size-small {
+  grid-column: span 1;
+  grid-row: span 1;
 }
 
 /* 그리드 아이템 */
@@ -414,7 +443,7 @@ body, html {
 
 /* Card 3 - 3D 나선형 계단 */
 .spiral-container {
-  display: none;
+  display: block;
   width: 100%;
   height: 100%;
   position: absolute;
@@ -424,10 +453,11 @@ body, html {
   perspective: 400px;
   perspective-origin: 50% 80%;
   background: linear-gradient(180deg, #0a0a15 0%, #1a1a2e 30%, #16213e 70%, #0f3460 100%);
+  border-radius: 24px;
 }
 
 .card.fullscreen .spiral-container {
-  display: block;
+  border-radius: 0;
 }
 
 .spiral-scene {
@@ -852,29 +882,213 @@ body, html {
 }
 
 @media (max-width: 768px) {
+  .card-stack {
+    width: 90%;
+    height: 400px;
+  }
+  
   .card {
-    padding: 40px 30px;
+    padding: 30px 20px;
+    border-radius: 16px;
   }
   
   .card h2 {
-    font-size: 2rem;
+    font-size: 1.8rem;
   }
   
   .card p {
-    font-size: 1.1rem;
+    font-size: 1rem;
+  }
+  
+  .card-number {
+    font-size: 5rem;
+  }
+  
+  .card.fullscreen .card-number {
+    font-size: 8rem;
   }
 
   .card.fullscreen {
-    padding: 60px 30px 100px;
+    padding: 50px 20px 100px;
+    border-radius: 0;
   }
 
   .indicator {
-    right: 20px;
+    right: 15px;
+    gap: 12px;
+  }
+  
+  .dot {
+    width: 10px;
+    height: 10px;
   }
 
   .close-button {
-    bottom: 30px;
+    bottom: 25px;
+    padding: 12px 35px;
+    font-size: 0.85rem;
+  }
+  
+  /* 그리드 모바일 */
+  .grid-container {
+    width: 85%;
+    max-width: 280px;
+    gap: 8px;
+  }
+  
+  .card.fullscreen .grid-container {
+    width: 85%;
+    max-width: 350px;
+    gap: 10px;
+  }
+  
+  .card.fullscreen #grid-container-1 {
+    max-width: 300px;
+  }
+  
+  .card.fullscreen #grid-container-2 {
+    width: 90%;
+    max-width: 400px;
+    gap: 8px;
+    grid-auto-rows: 70px;
+  }
+  
+  #grid-container-2 .size-large {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+  
+  #grid-container-2 .size-medium {
+    grid-column: span 1;
+    grid-row: span 2;
+  }
+  
+  #grid-container-2 .size-small {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+  
+  .grid-button {
+    padding: 8px 16px;
+    font-size: 0.8rem;
+  }
+  
+  /* 비디오 오버레이 모바일 */
+  .play-overlay {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+  }
+  
+  /* 음소거 버튼 모바일 */
+  .mute-button {
+    width: 44px;
+    height: 44px;
+    bottom: 20px;
+    right: 20px;
+  }
+  
+  .mute-icon {
+    font-size: 1.3rem;
+  }
+  
+  /* human 이미지 모바일 */
+  .human-image {
+    width: 60px;
+    height: 60px;
+  }
+  
+  /* 팝업 모바일 */
+  .popup-content {
+    padding: 40px 30px;
+    width: 90%;
+    max-width: 350px;
+  }
+  
+  .popup-content h2 {
+    font-size: 1.5rem;
+  }
+  
+  .popup-content p {
+    font-size: 1rem;
+  }
+  
+  .popup-close-button {
     padding: 14px 40px;
     font-size: 0.9rem;
+  }
+  
+  /* Card3 나선 계단 모바일 */
+  .spiral-container {
+    perspective: 300px;
+  }
+  
+  .stair-top {
+    width: 200px;
+    height: 80px;
+    margin-left: -100px;
+  }
+  
+  .stair-front {
+    width: 200px;
+    margin-left: -100px;
+  }
+  
+  .stair-frame {
+    width: 60px;
+    height: 60px;
+    transform: translateX(-130px) translateY(-80px) translateZ(30px) rotateY(-20deg);
+  }
+  
+  .stair-frame:hover {
+    transform: translateX(-130px) translateY(-85px) translateZ(50px) rotateY(-20deg) scale(1.1);
+  }
+  
+  .stair-frame-inner {
+    font-size: 1.3rem;
+  }
+  
+  .spiral-progress {
+    font-size: 1.2rem;
+    bottom: 80px;
+  }
+  
+  #card3-video {
+    max-width: 95vw;
+    max-height: 50vh;
+  }
+}
+
+/* 아주 작은 화면 */
+@media (max-width: 400px) {
+  .card-stack {
+    width: 95%;
+    height: 350px;
+  }
+  
+  .card {
+    padding: 25px 15px;
+  }
+  
+  .card-number {
+    font-size: 4rem;
+  }
+  
+  .card.fullscreen .card-number {
+    font-size: 6rem;
+  }
+  
+  .grid-container {
+    max-width: 240px;
+    gap: 6px;
+  }
+  
+  .card.fullscreen .grid-container {
+    max-width: 280px;
+  }
+  
+  .card.fullscreen #grid-container-2 {
+    max-width: 320px;
+    grid-auto-rows: 60px;
   }
 }

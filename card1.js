@@ -9,55 +9,113 @@
   
   if (!card1 || !humanImage) return;
   
-  // Human 위치 (비율로 저장 - 0~1)
-  let humanPosRatioX = 0.5;
-  let humanPosRatioY = 0.3;
-  let targetRatioX = 0.5;
-  let targetRatioY = 0.3;
+  // Human 위치 (비율로 저장 - 0~1) - 좌상단 버튼 피해서 위치
+  let ratioX = 0.15;
+  let ratioY = 0.15;
+  let wasFullscreen = false;
+  let isTransitioning = false;
+  
+  // human 위치 업데이트
+  function updateHumanPosition() {
+    const cardWidth = card1.offsetWidth;
+    const cardHeight = card1.offsetHeight;
+    const imageWidth = 80;
+    const imageHeight = 80;
+    
+    const posX = ratioX * cardWidth - imageWidth / 2;
+    const posY = ratioY * cardHeight - imageHeight / 2;
+    
+    humanImage.style.left = posX + 'px';
+    humanImage.style.top = posY + 'px';
+  }
+  
+  // fullscreen 상태 변화 감지
+  function checkFullscreenChange() {
+    const isCurrentlyFullscreen = card1.classList.contains('fullscreen');
+    
+    if (wasFullscreen !== isCurrentlyFullscreen) {
+      isTransitioning = true;
+      
+      // 전환 시작: human 숨김
+      humanImage.style.opacity = '0';
+      
+      // 애니메이션 완료 후: 위치 업데이트하고 표시
+      setTimeout(() => {
+        updateHumanPosition();
+        humanImage.style.opacity = '1';
+        isTransitioning = false;
+      }, 650);
+      
+      wasFullscreen = isCurrentlyFullscreen;
+    }
+    
+    requestAnimationFrame(checkFullscreenChange);
+  }
   
   // 클릭 시 이미지가 클릭 위치로 이동
   card1.addEventListener('click', (e) => {
     // fullscreen 상태에서만 작동
     if (!card1.classList.contains('fullscreen')) return;
+    if (isTransitioning) return;
     
-    // 닫기 버튼, 그리드 버튼 클릭은 무시
-    if (e.target.classList.contains('close-button')) return;
-    if (e.target.classList.contains('grid-button')) return;
+    // 닫기 버튼 클릭은 무시
+    if (e.target.closest('.close-button')) return;
+    
+    // 그리드 버튼 클릭은 무시
+    if (e.target.closest('.grid-button')) return;
+    
+    // 뒤집힌 그리드 아이템의 뒷면 클릭은 무시
+    const gridItem = e.target.closest('.grid-item');
+    if (gridItem && gridItem.classList.contains('flipped')) return;
     
     const rect = card1.getBoundingClientRect();
     
-    // 클릭 위치를 비율로 저장 (0~1)
-    targetRatioX = (e.clientX - rect.left) / rect.width;
-    targetRatioY = (e.clientY - rect.top) / rect.height;
+    // 클릭 위치를 비율로 계산
+    const newRatioX = (e.clientX - rect.left) / rect.width;
+    const newRatioY = (e.clientY - rect.top) / rect.height;
+    
+    // 부드러운 이동
+    animateToRatio(newRatioX, newRatioY);
   });
   
-  // Human 위치를 비율 기반으로 계산
-  function updateHumanPosition() {
-    // 부드러운 이동
-    humanPosRatioX += (targetRatioX - humanPosRatioX) * 0.08;
-    humanPosRatioY += (targetRatioY - humanPosRatioY) * 0.08;
+  // 비율 기준으로 부드럽게 이동
+  function animateToRatio(targetRatioX, targetRatioY) {
+    const startRatioX = ratioX;
+    const startRatioY = ratioY;
+    const duration = 300;
+    const startTime = performance.now();
     
-    const rect = card1.getBoundingClientRect();
-    const imageWidth = humanImage.offsetWidth;
-    const imageHeight = humanImage.offsetHeight;
-    
-    // 비율을 실제 픽셀 위치로 변환
-    const posX = humanPosRatioX * rect.width - imageWidth / 2;
-    const posY = humanPosRatioY * rect.height - imageHeight / 2;
-    
-    humanImage.style.left = posX + 'px';
-    humanImage.style.top = posY + 'px';
-    
-    // 그리드 아이템과의 충돌 감지 (fullscreen일 때만)
-    if (card1.classList.contains('fullscreen')) {
-      checkGridCollision();
+    function animate(currentTime) {
+      if (isTransitioning) return;
+      
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // easeOutCubic
+      const ease = 1 - Math.pow(1 - progress, 3);
+      
+      ratioX = startRatioX + (targetRatioX - startRatioX) * ease;
+      ratioY = startRatioY + (targetRatioY - startRatioY) * ease;
+      
+      updateHumanPosition();
+      
+      // 그리드 충돌 감지 (전환 중이 아닐 때만)
+      if (card1.classList.contains('fullscreen') && !isTransitioning) {
+        checkGridCollision();
+      }
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
     }
     
-    requestAnimationFrame(updateHumanPosition);
+    requestAnimationFrame(animate);
   }
   
-  // 그리드 아이템과 human의 충돌 감지 - 한번 뒤집히면 유지
+  // 그리드 아이템과 human의 충돌 감지
   function checkGridCollision() {
+    if (isTransitioning) return;
+    
     const humanRect = humanImage.getBoundingClientRect();
     const humanCenterX = humanRect.left + humanRect.width / 2;
     const humanCenterY = humanRect.top + humanRect.height / 2;
@@ -65,14 +123,12 @@
     gridItems.forEach(item => {
       const itemRect = item.getBoundingClientRect();
       
-      // human 중심이 그리드 아이템 위에 있는지 확인
       const isOverlapping = 
         humanCenterX >= itemRect.left &&
         humanCenterX <= itemRect.right &&
         humanCenterY >= itemRect.top &&
         humanCenterY <= itemRect.bottom;
       
-      // 한번 뒤집히면 계속 유지 (떠나도 원래대로 안 돌아감)
       if (isOverlapping) {
         item.classList.add('flipped');
       }
@@ -114,18 +170,12 @@
     });
   }
   
-  // 카드1 닫을 때 그리드 상태 초기화 함수
+  // 카드1 닫을 때 - 그리드 상태 유지
   window.resetCard1Grid = function() {
-    gridItems.forEach(item => {
-      item.classList.remove('flipped');
-    });
-    // human 위치도 초기화
-    humanPosRatioX = 0.5;
-    humanPosRatioY = 0.3;
-    targetRatioX = 0.5;
-    targetRatioY = 0.3;
+    // 상태 유지 - 초기화하지 않음
   };
   
   // 초기화
   updateHumanPosition();
+  checkFullscreenChange();
 })();
