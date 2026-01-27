@@ -10,13 +10,13 @@
   <div class="card-stack">
     <section class="card active" id="card-1">
       <h2 class="card-number">1</h2>
-      <div class="grid-container" id="grid-container-1">
-        <div class="grid-item" data-index="0"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
-        <div class="grid-item" data-index="1"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
-        <div class="grid-item" data-index="2"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
-        <div class="grid-item" data-index="3"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
-        <div class="grid-item" data-index="4"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
-        <div class="grid-item" data-index="5"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
+      <div class="card1-scatter-container" id="grid-container-1">
+        <div class="grid-item scatter-item" data-index="0" style="top: 8%; left: 5%;"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
+        <div class="grid-item scatter-item" data-index="1" style="top: 5%; left: 65%;"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
+        <div class="grid-item scatter-item" data-index="2" style="top: 35%; left: 25%;"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
+        <div class="grid-item scatter-item" data-index="3" style="top: 40%; left: 70%;"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
+        <div class="grid-item scatter-item" data-index="4" style="top: 70%; left: 8%;"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
+        <div class="grid-item scatter-item" data-index="5" style="top: 75%; left: 55%;"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
       </div>
       <img src="Image/human.jpg" alt="Human" class="human-image" id="human-image">
       <button class="close-button">뒤로가기</button>
@@ -38,92 +38,38 @@
       <div class="spiral-container" id="spiral-container">
         <div class="spiral-scene" id="spiral-scene">
           <div class="spiral-pillar"></div>
-          <div class="spiral-stair" data-index="0">
-            <div class="stair-top"></div>
-            <div class="stair-front"></div>
-            <div class="stair-side"></div>
-            <div class="stair-railing"></div>
-            <div class="stair-frame" data-video="Video/vid1.mp4"><div class="stair-frame-inner">▶</div></div>
-          </div>
-          <div class="spiral-stair" data-index="1">
-            <div class="stair-top"></div>
-            <div class="stair-front"></div>
-            <div class="stair-side"></div>
-            <div class="stair-railing"></div>
-            <div class="stair-frame" data-video="Video/vid2.mp4"><div class="stair-frame-inner">▶</div></div>
-          </div>
-          <div class="spiral-stair" data-index="2">
-            <div class="stair-top"></div>
-            <div class="stair-front"></div>
-            <div class="stair-side"></div>
-            <div class="stair-railing"></div>
-            <div class="stair-frame" data-video="Video/vid3.mp4"><div class="stair-frame-inner">▶</div></div>
-          </div>
-          <div class="spiral-stair" data-index="3">
-            <div class="stair-top"></div>
-            <div class="stair-front"></div>
-            <div class="stair-side"></div>
-            <div class="stair-railing"></div>
-            <div class="stair-frame" data-video="Video/vid4.mp4"><div class="stair-frame-inner">▶</div></div>
-          </div>
-          <div class="spiral-stair" data-index="4">
-            <div class="stair-top"></div>
-            <div class="stair-front"></div>
-            <div class="stair-side"></div>
-            <div class="stair-railing"></div>
-            <div class="stair-frame" data-video="Video/vid5.mp4"><div class="stair-frame-inner">▶</div></div>
-          </div>
-          <div class="spiral-stair" data-index="5">
-            <div class="stair-top"></div>
-            <div class="stair-front"></div>
-            <div class="stair-side"></div>
-            <div class="stair-railing"></div>
-            <div class="stair-frame" data-video="Video/vid6.mp4"><div class="stair-frame-inner">▶</div></div>
-          </div>
-          <div class="spiral-stair" data-index="6">
-            <div class="stair-top"></div>
-            <div class="stair-front"></div>
-            <div class="stair-side"></div>
-            <div class="stair-railing"></div>
-            <div class="stair-frame" data-video="Video/vid1.mp4"><div class="stair-frame-inner">▶</div></div>
-          </div>
-          <div class="spiral-stair" data-index="7">
-            <div class="stair-top"></div>
-            <div class="stair-front"></div>
-            <div class="stair-side"></div>
-            <div class="stair-railing"></div>
-            <div class="stair-frame" data-video="Video/vid2.mp4"><div class="stair-frame-inner">▶</div></div>
-          </div>
-          <div class="spiral-stair" data-index="8">
-            <div class="stair-top"></div>
-            <div class="stair-front"></div>
-            <div class="stair-side"></div>
-            <div class="stair-railing"></div>
-            <div class="stair-frame" data-video="Video/vid3.mp4"><div class="stair-frame-inner">▶</div></div>
-          </div>
-          <div class="spiral-stair" data-index="9">
-            <div class="stair-top"></div>
-            <div class="stair-front"></div>
-            <div class="stair-side"></div>
-            <div class="stair-railing"></div>
-            <div class="stair-frame" data-video="Video/vid4.mp4"><div class="stair-frame-inner">▶</div></div>
-          </div>
-          <div class="spiral-stair" data-index="10">
-            <div class="stair-top"></div>
-            <div class="stair-front"></div>
-            <div class="stair-side"></div>
-            <div class="stair-railing"></div>
-            <div class="stair-frame" data-video="Video/vid5.mp4"><div class="stair-frame-inner">▶</div></div>
-          </div>
-          <div class="spiral-stair" data-index="11">
-            <div class="stair-top"></div>
-            <div class="stair-front"></div>
-            <div class="stair-side"></div>
-            <div class="stair-railing"></div>
-            <div class="stair-frame" data-video="Video/vid6.mp4"><div class="stair-frame-inner">▶</div></div>
-          </div>
+          <div class="spiral-stair" data-index="0"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="1"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="2"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="3"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="4"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div><div class="stair-frame" data-video="Video/vid1.mp4"><div class="stair-frame-inner">▶</div></div></div>
+          <div class="spiral-stair" data-index="5"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="6"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="7"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="8"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="9"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div><div class="stair-frame" data-video="Video/vid2.mp4"><div class="stair-frame-inner">▶</div></div></div>
+          <div class="spiral-stair" data-index="10"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="11"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="12"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="13"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="14"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div><div class="stair-frame" data-video="Video/vid3.mp4"><div class="stair-frame-inner">▶</div></div></div>
+          <div class="spiral-stair" data-index="15"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="16"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="17"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="18"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="19"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div><div class="stair-frame" data-video="Video/vid4.mp4"><div class="stair-frame-inner">▶</div></div></div>
+          <div class="spiral-stair" data-index="20"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="21"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="22"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="23"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="24"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div><div class="stair-frame" data-video="Video/vid5.mp4"><div class="stair-frame-inner">▶</div></div></div>
+          <div class="spiral-stair" data-index="25"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="26"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="27"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="28"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
+          <div class="spiral-stair" data-index="29"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div><div class="stair-frame" data-video="Video/vid6.mp4"><div class="stair-frame-inner">▶</div></div></div>
         </div>
-        <div class="spiral-progress" id="spiral-progress">0%</div>
+        <div class="spiral-progress" id="spiral-progress">1F</div>
       </div>
       <div class="particle-container" id="particle-container"></div>
       <button class="close-button">뒤로가기</button>

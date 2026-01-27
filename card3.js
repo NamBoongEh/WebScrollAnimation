@@ -13,14 +13,37 @@
   if (!card3 || !spiralContainer) return;
   
   let scrollProgress = 0;
+  let targetScrollProgress = 0;
   const maxScroll = 100;
   let hasExploded = false;
   const explodeThreshold = 85;
+  let animationFrame = null;
   
   // 계단 파라미터
-  const stairHeight = 80; // 각 계단 높이 차이
+  const stairHeight = 50; // 각 계단 높이 차이 (30층이므로 줄임)
   const stairRadius = 250; // 나선 반경
-  const anglePerStair = 35; // 계단당 회전 각도
+  const anglePerStair = 25; // 계단당 회전 각도 (30층이므로 줄임)
+  
+  // 부드러운 스크롤 애니메이션
+  function smoothScrollAnimation() {
+    const diff = targetScrollProgress - scrollProgress;
+    
+    if (Math.abs(diff) > 0.01) {
+      scrollProgress += diff * 0.08; // 부드러운 보간
+      updateFirstPersonView();
+      animationFrame = requestAnimationFrame(smoothScrollAnimation);
+    } else {
+      scrollProgress = targetScrollProgress;
+      updateFirstPersonView();
+      animationFrame = null;
+    }
+  }
+  
+  function startSmoothScroll() {
+    if (!animationFrame) {
+      animationFrame = requestAnimationFrame(smoothScrollAnimation);
+    }
+  }
   
   // 초기화
   function initSpiralStairs() {
@@ -187,10 +210,10 @@
     e.stopPropagation();
     
     // 휠 아래 = 계단 올라감
-    const delta = e.deltaY > 0 ? 1.5 : -1.5;
-    scrollProgress = Math.max(0, Math.min(maxScroll, scrollProgress + delta));
+    const delta = e.deltaY > 0 ? 3 : -3;
+    targetScrollProgress = Math.max(0, Math.min(maxScroll, targetScrollProgress + delta));
     
-    updateFirstPersonView();
+    startSmoothScroll();
   }
   
   card3.addEventListener('wheel', handleWheel, { passive: false });
@@ -219,10 +242,10 @@
     touchCurrentY = newY;
     
     // 드래그 방향에 따라 스크롤
-    const delta = deltaY * 0.3;
-    scrollProgress = Math.max(0, Math.min(maxScroll, scrollProgress + delta));
+    const delta = deltaY * 0.5;
+    targetScrollProgress = Math.max(0, Math.min(maxScroll, targetScrollProgress + delta));
     
-    updateFirstPersonView();
+    startSmoothScroll();
   }, { passive: true });
   
   card3.addEventListener('touchend', () => {
@@ -241,6 +264,7 @@
   
   window.initCard3 = function() {
     scrollProgress = 0;
+    targetScrollProgress = 0;
     hasExploded = false;
     updateFirstPersonView();
   };

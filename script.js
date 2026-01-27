@@ -53,6 +53,9 @@ function updateCardPositions() {
 function enterFullscreen(card) {
   isFullscreen = true;
   
+  // 마우스로 인해 밀려난 카드 위치 리셋
+  card.style.transform = '';
+  
   // 현재 카드의 위치와 크기 저장
   const rect = card.getBoundingClientRect();
   
@@ -118,6 +121,9 @@ function exitFullscreen() {
   const targetTop = stackRect.top;
   const targetLeft = stackRect.left;
   
+  // 축소 시작 - shrinking 클래스 추가 (내부 요소들 축소 트리거)
+  activeCard.classList.add('shrinking');
+  
   // 축소 애니메이션
   activeCard.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
   activeCard.style.top = targetTop + 'px';
@@ -128,6 +134,7 @@ function exitFullscreen() {
   
   setTimeout(() => {
     activeCard.classList.remove('fullscreen');
+    activeCard.classList.remove('shrinking');
     activeCard.style.position = '';
     activeCard.style.top = '';
     activeCard.style.left = '';

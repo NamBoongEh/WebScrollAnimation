@@ -189,25 +189,67 @@ body, html {
 /* Human 이미지 스타일 */
 .human-image {
   position: absolute;
-  width: 80px;
-  height: 80px;
+  width: 6%;
+  aspect-ratio: 1;
   object-fit: cover;
   border-radius: 50%;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   cursor: pointer;
   z-index: 15;
   pointer-events: none;
+  transition: none;
 }
 
 .human-image:hover {
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
 }
 
+/* Card1 불규칙 배치 컨테이너 */
+.card1-scatter-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+}
+
+.scatter-item {
+  position: absolute;
+  aspect-ratio: 16 / 9;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 각 아이템 다른 크기 */
+.scatter-item[data-index="0"] {
+  width: 28%;
+}
+
+.scatter-item[data-index="1"] {
+  width: 22%;
+}
+
+.scatter-item[data-index="2"] {
+  width: 35%;
+}
+
+.scatter-item[data-index="3"] {
+  width: 18%;
+}
+
+.scatter-item[data-index="4"] {
+  width: 30%;
+}
+
+.scatter-item[data-index="5"] {
+  width: 25%;
+}
+
 /* 그리드 컨테이너 */
 .grid-container {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 15px;
   position: absolute;
   top: 50%;
   left: 50%;
@@ -215,27 +257,32 @@ body, html {
   width: 70%;
   max-width: 280px;
   z-index: 10;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
+              max-width 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
+              gap 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card.fullscreen .grid-container {
   width: 60%;
   max-width: 450px;
+  gap: 25px;
+}
+
+/* 축소 시 그리드 크기 줄이기 */
+.card.shrinking .grid-container {
+  width: 70%;
+  max-width: 280px;
   gap: 15px;
-}
-
-/* card1 그리드 */
-#grid-container-1 {
-  max-width: 250px;
-}
-
-.card.fullscreen #grid-container-1 {
-  max-width: 400px;
 }
 
 /* card2 비디오 그리드 */
 #grid-container-2 {
   max-width: 280px;
   grid-auto-rows: 50px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
+              max-width 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
+              grid-auto-rows 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              gap 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card.fullscreen #grid-container-2 {
@@ -245,6 +292,13 @@ body, html {
   grid-template-columns: repeat(3, 1fr);
   grid-auto-rows: 100px;
   gap: 12px;
+}
+
+.card.shrinking #grid-container-2 {
+  width: 70%;
+  max-width: 280px;
+  grid-auto-rows: 50px;
+  gap: 15px;
 }
 
 /* 다양한 크기의 그리드 아이템 */
@@ -272,7 +326,7 @@ body, html {
 /* 그리드 아이템 */
 .grid-item {
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 16 / 9;
   perspective: 1000px;
   cursor: pointer;
 }
@@ -454,10 +508,15 @@ body, html {
   perspective-origin: 50% 80%;
   background: linear-gradient(180deg, #0a0a15 0%, #1a1a2e 30%, #16213e 70%, #0f3460 100%);
   border-radius: 24px;
+  transition: border-radius 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card.fullscreen .spiral-container {
   border-radius: 0;
+}
+
+.card.shrinking .spiral-container {
+  border-radius: 24px;
 }
 
 .spiral-scene {
@@ -466,6 +525,16 @@ body, html {
   height: 100%;
   transform-style: preserve-3d;
   transform-origin: 50% 80%;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(0.6);
+}
+
+.card.fullscreen .spiral-scene {
+  transform: scale(1);
+}
+
+.card.shrinking .spiral-scene {
+  transform: scale(0.6);
 }
 
 /* 중앙 기둥 */
@@ -473,7 +542,9 @@ body, html {
   position: absolute;
   left: 50%;
   bottom: 0;
-  width: 40px;
+  width: 3%;
+  min-width: 20px;
+  max-width: 40px;
   height: 2000px;
   background: linear-gradient(90deg, #2d2d44 0%, #4a4a6a 50%, #2d2d44 100%);
   transform: translateX(-50%) translateZ(0);

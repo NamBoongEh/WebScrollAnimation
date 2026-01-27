@@ -9,24 +9,19 @@
   
   if (!card1 || !humanImage) return;
   
-  // Human 위치 (비율로 저장 - 0~1) - 좌상단 버튼 피해서 위치
-  let ratioX = 0.15;
-  let ratioY = 0.15;
+  // Human 위치 (비율로 저장 - 0~1) - 버튼 없는 최상단 영역에 위치
+  let ratioX = 0.50;
+  let ratioY = 0.08;
   let wasFullscreen = false;
   let isTransitioning = false;
   
-  // human 위치 업데이트
-  function updateHumanPosition() {
-    const cardWidth = card1.offsetWidth;
-    const cardHeight = card1.offsetHeight;
-    const imageWidth = 80;
-    const imageHeight = 80;
-    
-    const posX = ratioX * cardWidth - imageWidth / 2;
-    const posY = ratioY * cardHeight - imageHeight / 2;
-    
-    humanImage.style.left = posX + 'px';
-    humanImage.style.top = posY + 'px';
+  // human 위치를 퍼센트로 설정 (CSS가 자동으로 처리)
+  function updateHumanPositionPercent() {
+    // 퍼센트 기반으로 설정 - 이미지 중심이 해당 비율에 위치하도록
+    // left, top을 퍼센트로, transform으로 중앙 정렬
+    humanImage.style.left = (ratioX * 100) + '%';
+    humanImage.style.top = (ratioY * 100) + '%';
+    humanImage.style.transform = 'translate(-50%, -50%)';
   }
   
   // fullscreen 상태 변화 감지
@@ -36,13 +31,8 @@
     if (wasFullscreen !== isCurrentlyFullscreen) {
       isTransitioning = true;
       
-      // 전환 시작: human 숨김
-      humanImage.style.opacity = '0';
-      
-      // 애니메이션 완료 후: 위치 업데이트하고 표시
+      // 애니메이션 완료 후
       setTimeout(() => {
-        updateHumanPosition();
-        humanImage.style.opacity = '1';
         isTransitioning = false;
       }, 650);
       
@@ -64,10 +54,6 @@
     // 그리드 버튼 클릭은 무시
     if (e.target.closest('.grid-button')) return;
     
-    // 뒤집힌 그리드 아이템의 뒷면 클릭은 무시
-    const gridItem = e.target.closest('.grid-item');
-    if (gridItem && gridItem.classList.contains('flipped')) return;
-    
     const rect = card1.getBoundingClientRect();
     
     // 클릭 위치를 비율로 계산
@@ -75,41 +61,57 @@
     const newRatioY = (e.clientY - rect.top) / rect.height;
     
     // 부드러운 이동
-    animateToRatio(newRatioX, newRatioY);
+    startLerpToPosition(newRatioX, newRatioY);
   });
   
-  // 비율 기준으로 부드럽게 이동
-  function animateToRatio(targetRatioX, targetRatioY) {
-    const startRatioX = ratioX;
-    const startRatioY = ratioY;
-    const duration = 300;
-    const startTime = performance.now();
+  // Lerp 애니메이션 변수
+  let targetRatioX = ratioX;
+  let targetRatioY = ratioY;
+  let isLerping = false;
+  const lerpSpeed = 0.08; // lerp 속도 (0~1, 작을수록 부드러움)
+  
+  // Lerp로 부드럽게 이동
+  function startLerpToPosition(newTargetX, newTargetY) {
+    targetRatioX = newTargetX;
+    targetRatioY = newTargetY;
     
-    function animate(currentTime) {
-      if (isTransitioning) return;
-      
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      
-      // easeOutCubic
-      const ease = 1 - Math.pow(1 - progress, 3);
-      
-      ratioX = startRatioX + (targetRatioX - startRatioX) * ease;
-      ratioY = startRatioY + (targetRatioY - startRatioY) * ease;
-      
-      updateHumanPosition();
-      
-      // 그리드 충돌 감지 (전환 중이 아닐 때만)
-      if (card1.classList.contains('fullscreen') && !isTransitioning) {
-        checkGridCollision();
-      }
-      
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      }
+    if (!isLerping) {
+      isLerping = true;
+      lerpAnimation();
+    }
+  }
+  
+  function lerpAnimation() {
+    if (isTransitioning) {
+      isLerping = false;
+      return;
     }
     
-    requestAnimationFrame(animate);
+    // Lerp 계산
+    const diffX = targetRatioX - ratioX;
+    const diffY = targetRatioY - ratioY;
+    
+    // 목표에 거의 도달했으면 종료
+    if (Math.abs(diffX) < 0.001 && Math.abs(diffY) < 0.001) {
+      ratioX = targetRatioX;
+      ratioY = targetRatioY;
+      updateHumanPositionPercent();
+      isLerping = false;
+      return;
+    }
+    
+    // Lerp 적용
+    ratioX += diffX * lerpSpeed;
+    ratioY += diffY * lerpSpeed;
+    
+    updateHumanPositionPercent();
+    
+    // 그리드 충돌 감지 (전환 중이 아닐 때만)
+    if (card1.classList.contains('fullscreen') && !isTransitioning) {
+      checkGridCollision();
+    }
+    
+    requestAnimationFrame(lerpAnimation);
   }
   
   // 그리드 아이템과 human의 충돌 감지
@@ -176,6 +178,6 @@
   };
   
   // 초기화
-  updateHumanPosition();
+  updateHumanPositionPercent();
   checkFullscreenChange();
 })();
