@@ -233,34 +233,26 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// 마우스 휠 네비게이션 - 반동 효과 포함
+// 마우스 휠 네비게이션 - 단계적 움직임
+let scrollAccumulator = 0;
+const scrollThreshold = 500; // 카드 전환에 필요한 스크롤 양 (높은 값)
 let wheelTimeout = null;
-let lastWheelDelta = 0;
+let currentScrollY = 0; // 현재 스크롤 Y 위치 (lerp용)
+let targetScrollY = 0; // 목표 스크롤 Y 위치
 
-function applyBounceEffect(deltaY) {
-  const activeCard = cards[current];
-  if (!activeCard || isAnimating || isFullscreen) return;
-  
-  // 반동 양 계산
-  const bounceAmount = Math.min(Math.abs(deltaY) * 0.3, 25);
-  const bounceY = deltaY > 0 ? -bounceAmount : bounceAmount;
-  
-  activeCard.style.transition = 'transform 0.05s ease-out';
-  activeCard.style.transform = `translateZ(0px) translateY(${bounceY}px) scale(1)`;
+function updateCardScrollPosition() {
+  // 목표 위치 설정
+  targetScrollY = -scrollAccumulator * 0.3;
 }
 
-function resetBounceEffect() {
-  const activeCard = cards[current];
-  if (!activeCard || isFullscreen) return;
+function resetScrollPosition() {
+  targetScrollY = 0;
+  scrollAccumulator = 0;
   
-  activeCard.style.transition = 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
-  activeCard.style.transform = 'translateZ(0px) translateY(0px) scale(1)';
-  
+  // 복귀 후 상태 정리
   setTimeout(() => {
-    if (activeCard && !activeCard.classList.contains('fullscreen')) {
-      activeCard.style.transition = '';
-    }
-  }, 500);
+    updateCardPositions();
+  }, 400);
 }
 
 document.addEventListener('wheel', (e) => {
@@ -268,25 +260,32 @@ document.addEventListener('wheel', (e) => {
   
   if (isAnimating || isFullscreen) return;
   
-  lastWheelDelta = e.deltaY;
+  // 스크롤 누적
+  scrollAccumulator += e.deltaY * 0.5;
   
-  // 반동 효과 적용
-  applyBounceEffect(e.deltaY);
+  // 목표 위치 업데이트
+  updateCardScrollPosition();
   
   // 타임아웃 초기화
   if (wheelTimeout) clearTimeout(wheelTimeout);
   
-  // 카드 전환
-  if (e.deltaY > 0) {
+  // 임계점 도달 시 카드 전환
+  if (scrollAccumulator > scrollThreshold) {
+    scrollAccumulator = 0;
+    targetScrollY = 0;
+    currentScrollY = 0;
     navigateToCard(Math.min(current + 1, cards.length - 1));
-  } else if (e.deltaY < 0) {
+  } else if (scrollAccumulator < -scrollThreshold) {
+    scrollAccumulator = 0;
+    targetScrollY = 0;
+    currentScrollY = 0;
     navigateToCard(Math.max(current - 1, 0));
+  } else {
+    // 1초 내 임계점 미도달 시 원위치로 복귀
+    wheelTimeout = setTimeout(() => {
+      resetScrollPosition();
+    }, 1000);
   }
-  
-  // 휠이 멈추면 반동 후 원위치
-  wheelTimeout = setTimeout(() => {
-    resetBounceEffect();
-  }, 100);
 }, { passive: false });
 
 // 터치 이벤트 (모바일 스와이프)
@@ -350,6 +349,9 @@ document.addEventListener('mousemove', (e) => {
 function animateCardParallax() {
   currentMouseX += (mouseX - currentMouseX) * 0.1;
   currentMouseY += (mouseY - currentMouseY) * 0.1;
+  
+  // 스크롤 Y도 부드럽게 lerp
+  currentScrollY += (targetScrollY - currentScrollY) * 0.1;
 
   const activeCard = cards[current];
   if (activeCard && !isAnimating && !isFullscreen) {
@@ -372,7 +374,7 @@ function animateCardParallax() {
     // 마우스 반대 방향으로 밀려남
     const angle = Math.atan2(deltaY, deltaX);
     const moveX = -Math.cos(angle) * pushStrength;
-    const moveY = -Math.sin(angle) * pushStrength;
+    const moveY = -Math.sin(angle) * pushStrength + currentScrollY; // 스크롤 Y 추가
 
     activeCard.style.transform = `translateZ(0px) translate(${moveX}px, ${moveY}px) scale(1)`;
     
