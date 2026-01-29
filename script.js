@@ -1,13 +1,25 @@
 const cards = Array.from(document.querySelectorAll('.card'));
 const indicator = document.querySelector('.indicator');
 const closeButtons = document.querySelectorAll('.close-button');
+const cardStack = document.querySelector('.card-stack');
+
 let current = 0;
 let isAnimating = false;
-let mouseX = 0;
-let mouseY = 0;
-let currentMouseX = 0;
-let currentMouseY = 0;
 let isFullscreen = false;
+
+// 마우스 추적
+let mouseX = 0, mouseY = 0;
+let currentMouseX = 0, currentMouseY = 0;
+
+// 스크롤 관련
+let scrollAccumulator = 0;
+const scrollThreshold = 500;
+let wheelTimeout = null;
+let currentScrollY = 0, targetScrollY = 0;
+let currentScrollZ = 0, targetScrollZ = 0;
+let currentScrollAmount = 0, targetScrollAmount = 0;
+let currentScrollDirection = 0, targetScrollDirection = 0;
+let currentTilt = 0, targetTilt = 0;
 
 // 인디케이터 생성
 function createIndicator() {
@@ -20,141 +32,111 @@ function createIndicator() {
   });
 }
 
-// 카드 위치 업데이트
+// 카드 위치 업데이트 (애니메이션 없이 즉시)
 function updateCardPositions() {
   cards.forEach((card, i) => {
-    // 모든 애니메이션 클래스 제거
     card.className = 'card';
     card.style.transform = '';
+    card.style.opacity = '1';
+    card.style.visibility = '';
+    card.style.filter = '';
     
     const diff = i - current;
     
     if (diff === 0) {
       card.classList.add('active');
     } else if (diff === -1) {
-      // 바로 이전 카드 (현재 카드 뒤에 보임)
       card.classList.add('prev-1');
     } else if (diff <= -2) {
-      // 그 이전 카드들 (안 보임)
       card.classList.add('prev-2');
-    } else if (diff >= 1) {
-      // 다음 카드들 (안 보임)
+    } else {
       card.classList.add('next-hidden');
     }
   });
 
-  // 인디케이터 업데이트
-  Array.from(indicator.children).forEach((dot, i) => {
+  indicator.querySelectorAll('.dot').forEach((dot, i) => {
     dot.classList.toggle('active', i === current);
   });
 }
 
-// 전체화면 진입 시 히스토리 추가
+// 스크롤 변수 리셋
+function resetScrollVars() {
+  scrollAccumulator = 0;
+  targetScrollY = targetScrollZ = targetScrollAmount = targetScrollDirection = targetTilt = 0;
+  currentScrollY = currentScrollZ = currentScrollAmount = currentScrollDirection = currentTilt = 0;
+}
+
+// 전체화면 진입
 function enterFullscreen(card) {
   isFullscreen = true;
-  
-  // 마우스로 인해 밀려난 카드 위치 리셋
   card.style.transform = '';
   
-  // 현재 카드의 위치와 크기 저장
   const rect = card.getBoundingClientRect();
-  
-  // 카드를 body로 이동시켜서 card-stack의 transform 영향을 받지 않도록 함
   document.body.appendChild(card);
   
-  // 현재 위치에서 시작하도록 설정
-  card.style.position = 'fixed';
-  card.style.top = rect.top + 'px';
-  card.style.left = rect.left + 'px';
-  card.style.width = rect.width + 'px';
-  card.style.height = rect.height + 'px';
-  card.style.transition = 'none';
+  Object.assign(card.style, {
+    position: 'fixed',
+    top: rect.top + 'px',
+    left: rect.left + 'px',
+    width: rect.width + 'px',
+    height: rect.height + 'px',
+    transition: 'none'
+  });
   
-  // 강제 reflow
-  card.offsetHeight;
+  card.offsetHeight; // reflow
   
-  // 애니메이션 시작
-  card.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
-  card.style.top = '0';
-  card.style.left = '0';
-  card.style.width = '100vw';
-  card.style.height = '100vh';
-  card.style.borderRadius = '0';
+  Object.assign(card.style, {
+    transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+    top: '0',
+    left: '0',
+    width: '100vw',
+    height: '100vh',
+    borderRadius: '0'
+  });
   card.classList.add('fullscreen');
   
   document.body.style.overflow = 'hidden';
-  // 히스토리에 상태 추가
-  window.history.pushState({ fullscreen: true }, '');
+  history.pushState({ fullscreen: true }, '');
   
-  // 카드2인 경우 비디오 재개
-  if (card.id === 'card-2' && typeof window.resumeCard2Videos === 'function') {
-    setTimeout(() => {
-      window.resumeCard2Videos();
-    }, 600);
+  if (card.id === 'card-2' && window.resumeCard2Videos) {
+    setTimeout(window.resumeCard2Videos, 600);
   }
 }
 
-// 전체화면 해제 함수
+// 전체화면 해제
 function exitFullscreen() {
   const activeCard = cards[current];
-  const cardStack = document.querySelector('.card-stack');
   const stackRect = cardStack.getBoundingClientRect();
   
-  // 비디오 일시정지 (위치 유지)
-  if (typeof window.pauseAllCard2Videos === 'function') {
-    window.pauseAllCard2Videos();
-  }
+  window.pauseAllCard2Videos?.();
+  window.stopCard3Video?.();
+  window.resetCard1Grid?.();
   
-  // 카드3 비디오 정지
-  if (typeof window.stopCard3Video === 'function') {
-    window.stopCard3Video();
-  }
-  
-  // 카드1 그리드 초기화
-  if (typeof window.resetCard1Grid === 'function') {
-    window.resetCard1Grid();
-  }
-  
-  // 목표 위치 계산 (card-stack 중앙)
-  const targetWidth = stackRect.width;
-  const targetHeight = stackRect.height;
-  const targetTop = stackRect.top;
-  const targetLeft = stackRect.left;
-  
-  // 축소 시작 - shrinking 클래스 추가 (내부 요소들 축소 트리거)
   activeCard.classList.add('shrinking');
   
-  // 축소 애니메이션
-  activeCard.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
-  activeCard.style.top = targetTop + 'px';
-  activeCard.style.left = targetLeft + 'px';
-  activeCard.style.width = targetWidth + 'px';
-  activeCard.style.height = targetHeight + 'px';
-  activeCard.style.borderRadius = '24px';
+  Object.assign(activeCard.style, {
+    transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+    top: stackRect.top + 'px',
+    left: stackRect.left + 'px',
+    width: stackRect.width + 'px',
+    height: stackRect.height + 'px',
+    borderRadius: '24px'
+  });
   
   setTimeout(() => {
-    activeCard.classList.remove('fullscreen');
-    activeCard.classList.remove('shrinking');
-    activeCard.style.position = '';
-    activeCard.style.top = '';
-    activeCard.style.left = '';
-    activeCard.style.width = '';
-    activeCard.style.height = '';
-    activeCard.style.borderRadius = '';
-    activeCard.style.transition = '';
+    activeCard.classList.remove('fullscreen', 'shrinking');
+    Object.assign(activeCard.style, {
+      position: '', top: '', left: '', width: '', height: '', borderRadius: '', transition: ''
+    });
     
-    // 카드를 다시 card-stack으로 이동
     cardStack.appendChild(activeCard);
-    
     isFullscreen = false;
     document.body.style.overflow = '';
-    
-    // 카드 위치 재설정
     updateCardPositions();
   }, 600);
 }
 
-// 카드 클릭 이벤트 - 전체화면
+// 카드 클릭 이벤트
 cards.forEach((card, index) => {
   card.addEventListener('click', (e) => {
     if (index === current && !isFullscreen && !isAnimating) {
@@ -164,25 +146,20 @@ cards.forEach((card, index) => {
   });
 });
 
-// 뒤로가기 버튼 클릭 - 브라우저 뒤로가기
+// 닫기 버튼
 closeButtons.forEach((btn) => {
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
-    if (isFullscreen) {
-      // 브라우저 뒤로가기 실행
-      window.history.back();
-    }
+    if (isFullscreen) history.back();
   });
 });
 
-// 브라우저 뒤로가기 시 전체화면 해제 처리
+// 브라우저 뒤로가기
 window.addEventListener('popstate', () => {
-  if (isFullscreen) {
-    exitFullscreen();
-  }
+  if (isFullscreen) exitFullscreen();
 });
 
-// 네비게이션
+// 네비게이션 (현재 위치에서 이어서 애니메이션)
 function navigateToCard(nextIndex) {
   if (isAnimating || nextIndex < 0 || nextIndex >= cards.length || nextIndex === current || isFullscreen) {
     return;
@@ -193,29 +170,65 @@ function navigateToCard(nextIndex) {
   const oldCurrent = current;
   current = nextIndex;
 
+  const oldCard = cards[oldCurrent];
+  const newCard = cards[current];
+  const prevOfNew = cards[current - 1];
+  const prevOfOld = cards[oldCurrent - 1];
+
   if (direction === 'down') {
-    // 아래로 스크롤(휠 내릴때)
-    // 현재 카드 → prev-1 위치로 내려감
-    cards[oldCurrent].classList.add('animating-exit-down');
-    // 다음 카드 → active 위치로 올라옴
-    cards[current].classList.add('animating-enter-from-bottom');
-    // 이전 카드(있다면) → prev-2 위치로 더 내려감
-    if (oldCurrent > 0) {
-      cards[oldCurrent - 1].classList.add('animating-prev-exit');
+    // 아래로 스크롤: 현재 카드 → prev-1 위치로
+    oldCard.style.transition = 'all 1s cubic-bezier(0.4, 0, 0.2, 1)';
+    oldCard.style.transform = 'translateZ(-100px) translateY(60%) scale(0.5)';
+    oldCard.style.filter = 'brightness(0.9)';
+    oldCard.style.zIndex = '5';
+    
+    // 새 카드가 아래에서 올라옴
+    newCard.style.visibility = 'visible';
+    newCard.style.transition = 'all 1s cubic-bezier(0.4, 0, 0.2, 1)';
+    newCard.style.transform = 'translateZ(0) translateY(0) scale(1)';
+    newCard.style.zIndex = '10';
+    newCard.classList.add('active');
+    
+    // 이전 카드(prev-1)가 더 뒤로
+    if (prevOfOld) {
+      prevOfOld.style.transition = 'all 1s cubic-bezier(0.4, 0, 0.2, 1)';
+      prevOfOld.style.transform = 'translateZ(-200px) translateY(70%) scale(0.4)';
+      prevOfOld.style.visibility = 'hidden';
     }
   } else {
-    // 위로 스크롤(휠 올릴때)
-    // 현재 카드 → 아래로 내려가며 사라짐
-    cards[oldCurrent].classList.add('animating-exit-down-tilt');
-    // 이전 카드 → active 위치로 올라옴
-    cards[current].classList.add('animating-enter-from-top');
-    // 그 이전 카드(있다면) → prev-1 위치로 올라옴
-    if (current > 0) {
-      cards[current - 1].classList.add('animating-prev-enter');
+    // 위로 스크롤: 현재 카드 → 아래로 사라짐
+    oldCard.style.transition = 'all 1s cubic-bezier(0.4, 0, 0.2, 1)';
+    oldCard.style.transform = 'translateZ(150px) translateY(120%) rotateX(-50deg) scale(1)';
+    oldCard.style.visibility = 'hidden';
+    oldCard.style.zIndex = '10';
+    
+    // 새 카드(이전 카드)가 올라옴
+    newCard.style.visibility = 'visible';
+    newCard.style.transition = 'all 1s cubic-bezier(0.4, 0, 0.2, 1)';
+    newCard.style.transform = 'translateZ(0) translateY(0) scale(1)';
+    newCard.style.filter = 'brightness(1)';
+    newCard.style.zIndex = '5';
+    newCard.classList.add('active');
+    
+    // 그 이전 카드가 prev-1 위치로
+    if (prevOfNew) {
+      prevOfNew.style.visibility = 'visible';
+      prevOfNew.style.transition = 'all 1s cubic-bezier(0.4, 0, 0.2, 1)';
+      prevOfNew.style.transform = 'translateZ(-100px) translateY(60%) scale(0.5)';
+      prevOfNew.style.filter = 'brightness(0.9)';
     }
   }
 
   setTimeout(() => {
+    // 트랜지션 제거하고 클래스 기반으로 전환, 스크롤 변수도 리셋
+    cards.forEach(card => {
+      card.style.transition = '';
+      card.style.transform = '';
+      card.style.filter = '';
+      card.style.zIndex = '';
+      card.style.visibility = '';
+    });
+    resetScrollVars();
     updateCardPositions();
     updateTitle();
     isAnimating = false;
@@ -226,74 +239,58 @@ function navigateToCard(nextIndex) {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowDown') {
     e.preventDefault();
-    navigateToCard(Math.min(current + 1, cards.length - 1));
+    navigateToCard(current + 1);
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
-    navigateToCard(Math.max(current - 1, 0));
+    navigateToCard(current - 1);
   }
 });
 
-// 마우스 휠 네비게이션 - 단계적 움직임
-let scrollAccumulator = 0;
-const scrollThreshold = 500; // 카드 전환에 필요한 스크롤 양 (높은 값)
-let wheelTimeout = null;
-let currentScrollY = 0; // 현재 스크롤 Y 위치 (lerp용)
-let targetScrollY = 0; // 목표 스크롤 Y 위치
-
-function updateCardScrollPosition() {
-  // 목표 위치 설정
-  targetScrollY = -scrollAccumulator * 0.3;
-}
-
-function resetScrollPosition() {
-  targetScrollY = 0;
-  scrollAccumulator = 0;
-  
-  // 복귀 후 상태 정리
-  setTimeout(() => {
-    updateCardPositions();
-  }, 400);
-}
-
+// 휠 이벤트
 document.addEventListener('wheel', (e) => {
   e.preventDefault();
   
   if (isAnimating || isFullscreen) return;
   
-  // 스크롤 누적
   scrollAccumulator += e.deltaY * 0.5;
   
-  // 목표 위치 업데이트
-  updateCardScrollPosition();
+  const absScroll = Math.abs(scrollAccumulator);
+  const progress = absScroll / scrollThreshold;
   
-  // 타임아웃 초기화
+  if (scrollAccumulator > 0) {
+    // 아래로 스크롤 (deltaY 양수)
+    targetScrollY = absScroll * 0.6;
+    targetScrollZ = -absScroll * 2;
+    targetTilt = 0;
+  } else {
+    // 위로 스크롤 (deltaY 음수)
+    targetScrollY = absScroll * 0.6;
+    targetScrollZ = absScroll * 2;
+    targetTilt = -15 * progress; // 0에서 -15도로 기울어짐
+  }
+  
+  targetScrollAmount = progress;
+  targetScrollDirection = scrollAccumulator;
+  
   if (wheelTimeout) clearTimeout(wheelTimeout);
   
-  // 임계점 도달 시 카드 전환
-  if (scrollAccumulator > scrollThreshold) {
+  // 임계점 체크
+  if (absScroll > scrollThreshold) {
+    const dir = scrollAccumulator > 0 ? 1 : -1;
     scrollAccumulator = 0;
-    targetScrollY = 0;
-    currentScrollY = 0;
-    navigateToCard(Math.min(current + 1, cards.length - 1));
-  } else if (scrollAccumulator < -scrollThreshold) {
-    scrollAccumulator = 0;
-    targetScrollY = 0;
-    currentScrollY = 0;
-    navigateToCard(Math.max(current - 1, 0));
+    targetScrollAmount = targetScrollDirection = 0;
+    navigateToCard(current + dir);
   } else {
-    // 1초 내 임계점 미도달 시 원위치로 복귀
     wheelTimeout = setTimeout(() => {
-      resetScrollPosition();
+      targetScrollY = targetScrollZ = targetScrollAmount = targetScrollDirection = targetTilt = 0;
+      scrollAccumulator = 0;
     }, 1000);
   }
 }, { passive: false });
 
-// 터치 이벤트 (모바일 스와이프)
-let touchStartY = 0;
-let touchStartX = 0;
-let touchEndY = 0;
-let touchEndX = 0;
-const minSwipeDistance = 50;
+// 터치 이벤트
+let touchStartY = 0, touchEndY = 0;
+let touchStartX = 0, touchEndX = 0;
 
 document.addEventListener('touchstart', (e) => {
   touchStartY = e.touches[0].clientY;
@@ -301,90 +298,120 @@ document.addEventListener('touchstart', (e) => {
 }, { passive: true });
 
 document.addEventListener('touchmove', (e) => {
-  if (isFullscreen) return;
-  touchEndY = e.touches[0].clientY;
-  touchEndX = e.touches[0].clientX;
+  if (!isFullscreen) {
+    touchEndY = e.touches[0].clientY;
+    touchEndX = e.touches[0].clientX;
+  }
 }, { passive: true });
 
-document.addEventListener('touchend', (e) => {
+document.addEventListener('touchend', () => {
   if (isAnimating || isFullscreen) return;
   
   const deltaY = touchStartY - touchEndY;
   const deltaX = touchStartX - touchEndX;
   
-  // 수직 스와이프가 수평보다 클 때만 처리
-  if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minSwipeDistance) {
-    if (deltaY > 0) {
-      // 위로 스와이프 = 다음 카드
-      navigateToCard(Math.min(current + 1, cards.length - 1));
-    } else {
-      // 아래로 스와이프 = 이전 카드
-      navigateToCard(Math.max(current - 1, 0));
-    }
+  if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 50) {
+    navigateToCard(current + (deltaY > 0 ? 1 : -1));
   }
   
-  touchStartY = 0;
-  touchEndY = 0;
-  touchStartX = 0;
-  touchEndX = 0;
+  touchStartY = touchEndY = touchStartX = touchEndX = 0;
 }, { passive: true });
 
-// 초기화
-createIndicator();
-updateCardPositions();
-updateTitle();
-
-// 타이틀 업데이트 함수
+// 타이틀 업데이트
 function updateTitle() {
-  const boxes = cards.map((_, i) => i === current ? '■' : '□');
-  document.title = boxes.join('');
+  document.title = cards.map((_, i) => i === current ? '■' : '□').join('');
 }
 
-// 마우스 추적 및 카드 반응
+// 마우스 추적
 document.addEventListener('mousemove', (e) => {
   mouseX = e.clientX;
   mouseY = e.clientY;
 });
 
+// 애니메이션 루프
 function animateCardParallax() {
+  // lerp 적용
   currentMouseX += (mouseX - currentMouseX) * 0.1;
   currentMouseY += (mouseY - currentMouseY) * 0.1;
-  
-  // 스크롤 Y도 부드럽게 lerp
   currentScrollY += (targetScrollY - currentScrollY) * 0.1;
+  currentScrollZ += (targetScrollZ - currentScrollZ) * 0.1;
+  currentScrollAmount += (targetScrollAmount - currentScrollAmount) * 0.1;
+  currentScrollDirection += (targetScrollDirection - currentScrollDirection) * 0.1;
+  currentTilt += (targetTilt - currentTilt) * 0.1;
 
   const activeCard = cards[current];
+  const prevCard = cards[current - 1];
+  const nextCard = cards[current + 1];
+  
   if (activeCard && !isAnimating && !isFullscreen) {
     const rect = activeCard.getBoundingClientRect();
-    const cardCenterX = rect.left + rect.width / 2;
-    const cardCenterY = rect.top + rect.height / 2;
-
-    // 마우스와 카드 중심 사이의 거리 계산
-    const deltaX = currentMouseX - cardCenterX;
-    const deltaY = currentMouseY - cardCenterY;
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
     
-    // 최대 거리 (화면 대각선의 절반)
-    const maxDistance = Math.sqrt(window.innerWidth * window.innerWidth + window.innerHeight * window.innerHeight) / 2;
+    const deltaX = currentMouseX - centerX;
+    const deltaY = currentMouseY - centerY;
+    const distance = Math.hypot(deltaX, deltaY);
+    const maxDist = Math.hypot(innerWidth, innerHeight) / 2;
+    const ratio = Math.min(distance / maxDist, 1);
+    const push = ratio * 50;
     
-    // 거리가 멀수록 강하게, 가까울수록 약하게
-    const distanceRatio = Math.min(distance / maxDistance, 1);
-    const pushStrength = distanceRatio * 50; // 최대 50px 밀림
-    
-    // 마우스 반대 방향으로 밀려남
     const angle = Math.atan2(deltaY, deltaX);
-    const moveX = -Math.cos(angle) * pushStrength;
-    const moveY = -Math.sin(angle) * pushStrength + currentScrollY; // 스크롤 Y 추가
+    const moveX = -Math.cos(angle) * push;
+    const moveY = -Math.sin(angle) * push;
 
-    activeCard.style.transform = `translateZ(0px) translate(${moveX}px, ${moveY}px) scale(1)`;
+    // 현재 카드 변환
+    if (currentScrollDirection < -5) {
+      // 위로 스크롤: Y 아래로, Z 앞으로, tilt -15도로 기울어짐
+      activeCard.style.transform = `translateZ(${currentScrollZ}px) translate(${moveX}px, ${moveY + currentScrollY}px) rotateX(${currentTilt}deg)`;
+      activeCard.style.transformOrigin = 'center bottom';
+      
+      // 이전 카드도 Z와 Y 동작
+      if (prevCard) {
+        const prevZ = -100 + currentScrollAmount * 100; // -100 → 0
+        const prevY = 60 - currentScrollAmount * 60; // 60% → 0%
+        const prevScale = 0.5 + currentScrollAmount * 0.5; // 0.5 → 1
+        prevCard.style.transform = `translateZ(${prevZ}px) translateY(${prevY}%) scale(${prevScale})`;
+        prevCard.style.filter = `brightness(${0.9 + currentScrollAmount * 0.1})`;
+      }
+    } else if (currentScrollDirection > 5) {
+      // 아래로 스크롤: Y 아래로, Z 뒤로, 기울기 없음
+      activeCard.style.transform = `translateZ(${currentScrollZ}px) translate(${moveX}px, ${moveY + currentScrollY}px)`;
+      activeCard.style.transformOrigin = 'center center';
+      
+      // 이전 카드도 Z와 Y 동작 (더 뒤로, 더 아래로)
+      if (prevCard) {
+        const prevZ = -100 - currentScrollAmount * 100; // -100 → -200
+        const prevY = 60 + currentScrollAmount * 10; // 60% → 70%
+        const prevScale = 0.5 - currentScrollAmount * 0.1; // 0.5 → 0.4
+        prevCard.style.transform = `translateZ(${prevZ}px) translateY(${prevY}%) scale(${prevScale})`;
+        prevCard.style.filter = `brightness(${0.9 - currentScrollAmount * 0.05})`;
+      }
+      
+      // 다음 카드도 Z와 Y 동작 (뒤에서 앞으로)
+      if (nextCard) {
+        const nextZ = 200 - currentScrollAmount * 200; // 200 → 0 (뒤에서 앞으로)
+        const nextY = 120 - currentScrollAmount * 120; // 120% → 0%
+        const nextScale = 0.4 + currentScrollAmount * 0.6; // 0.4 → 1
+        nextCard.style.transform = `translateZ(${nextZ}px) translateY(${nextY}%) scale(${nextScale})`;
+        nextCard.style.visibility = 'visible';
+      }
+    } else {
+      // 스크롤 없음: 기본 패럴랙스만
+      activeCard.style.transform = `translateZ(${currentScrollZ}px) translate(${moveX}px, ${moveY + currentScrollY}px)`;
+      activeCard.style.transformOrigin = 'center center';
+    }
     
-    // 그림자도 밀리는 방향으로 변화
-    const shadowX = Math.cos(angle) * 20 * distanceRatio;
-    const shadowY = Math.sin(angle) * 20 * distanceRatio + 40;
-    activeCard.style.boxShadow = `${shadowX}px ${shadowY}px 80px rgba(0, 0, 0, 0.12), ${shadowX/2}px ${shadowY/2}px 30px rgba(0, 0, 0, 0.08)`;
+    // 그림자
+    const shadowX = Math.cos(angle) * 20 * ratio;
+    const shadowY = Math.sin(angle) * 20 * ratio + 40;
+    activeCard.style.boxShadow = `${shadowX}px ${shadowY}px 80px rgba(0,0,0,0.12), ${shadowX/2}px ${shadowY/2}px 30px rgba(0,0,0,0.08)`;
   }
 
   requestAnimationFrame(animateCardParallax);
 }
 
+// 초기화
+createIndicator();
+updateCardPositions();
+updateTitle();
 animateCardParallax();
