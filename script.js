@@ -129,6 +129,7 @@ function exitFullscreen() {
 
   window.pauseAllCard2Videos?.();
   window.stopCard3Video?.();
+  window.stopCard5Video?.();
   window.resetCard1Grid?.();
 
   activeCard.classList.add("shrinking");
@@ -442,13 +443,12 @@ function animateCardParallax() {
         prevCard.style.filter = `brightness(${0.9 - currentScrollAmount * 0.05})`;
       }
 
-      // 다음 카드: 화면 밖 아래에서 올라옴 (z-index 높게, 효과 극대화)
+      // 다음 카드: 완전히 화면 밖 아래에서 올라옴
       if (nextCard) {
-        const nextZ = 1200 * (1 - currentScrollAmount); // 1200 → 0 (앞에서 뒤로)
-        const nextY = 120 - currentScrollAmount * 120; // 120% → 0% (아래에서 올라옴)
-        const nextScale = 1.5 - currentScrollAmount * 0.5; // 1.5 → 1.0 (크게에서 원래로)
-        const nextTilt = -30 * (1 - currentScrollAmount); // -30도 → 0도
-        nextCard.style.transform = `translateZ(${nextZ}px) translateY(${nextY}%) rotateX(${nextTilt}deg) scale(${nextScale})`;
+        const nextY = 150 - currentScrollAmount * 150; // 150% → 0%
+        const nextScale = 1 + 0.3 * (1 - currentScrollAmount); // 1.3 → 1.0
+        const nextTilt = -40 * (1 - currentScrollAmount); // -40도 → 0도
+        nextCard.style.transform = `translateY(${nextY}%) rotateX(${nextTilt}deg) scale(${nextScale})`;
         nextCard.style.transformOrigin = "center top";
         nextCard.style.visibility = "visible";
         nextCard.style.zIndex = "15";
@@ -458,6 +458,19 @@ function animateCardParallax() {
       activeCard.style.transform = `translateZ(${currentScrollZ}px) translate(${moveX}px, ${moveY + currentScrollY}px)`;
       activeCard.style.transformOrigin = "center center";
       activeCard.style.zIndex = "";
+
+      // 다음 카드 인라인 스타일 정리 (깜빡임 방지)
+      if (nextCard) {
+        nextCard.style.visibility = "";
+        nextCard.style.zIndex = "";
+        nextCard.style.transform = "";
+        nextCard.style.transformOrigin = "";
+      }
+      // 이전 카드 인라인 스타일 정리
+      if (prevCard) {
+        prevCard.style.transform = "";
+        prevCard.style.filter = "";
+      }
     }
 
     // 그림자

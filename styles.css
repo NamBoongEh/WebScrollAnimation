@@ -41,16 +41,19 @@ body, html {
   transform-style: preserve-3d;
   will-change: transform;
   backface-visibility: hidden;
-  opacity: 0;
+  opacity: 1;
+  visibility: hidden;
   pointer-events: none;
   transition: box-shadow 0.4s ease, transform 0.1s ease-out;
   cursor: pointer;
+  overflow: hidden;
 }
 
 .card.fullscreen {
   position: fixed;
   z-index: 1000 !important;
   opacity: 1 !important;
+  visibility: visible !important;
   pointer-events: auto;
   overflow-y: auto;
   overflow-x: hidden;
@@ -68,27 +71,9 @@ body, html {
   display: none;
 }
 
-/* 카드 확대/축소 중 오버플로우 숨김 */
-.card {
-  overflow: hidden;
-}
-
 @keyframes expandCard {
-  0% {
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    border-radius: 24px;
-  }
-  100% {
-    width: 100vw;
-    height: 100vh;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    border-radius: 0;
-  }
+  0% { width: 100%; height: 100%; top: 0; left: 0; border-radius: 24px; }
+  100% { width: 100vw; height: 100vh; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 0; }
 }
 
 .card.fullscreen.closing {
@@ -96,24 +81,8 @@ body, html {
 }
 
 @keyframes shrinkCard {
-  0% {
-    width: 100vw;
-    height: 100vh;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    border-radius: 0;
-    opacity: 1;
-  }
-  100% {
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    transform: none;
-    border-radius: 24px;
-    opacity: 1;
-  }
+  0% { width: 100vw; height: 100vh; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 0; opacity: 1; }
+  100% { width: 100%; height: 100%; top: 0; left: 0; transform: none; border-radius: 24px; opacity: 1; }
 }
 
 .close-button {
@@ -136,1111 +105,110 @@ body, html {
   pointer-events: none;
 }
 
-.card.fullscreen .close-button {
-  opacity: 1;
-  pointer-events: auto;
-}
+.card.fullscreen .close-button { opacity: 1; pointer-events: auto; }
+.close-button:hover { background: #2563eb; transform: translateX(-50%) translateY(-2px); box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4); }
+.close-button:active { transform: translateX(-50%) translateY(0); }
 
-.close-button:hover {
-  background: #2563eb;
-  transform: translateX(-50%) translateY(-2px);
-  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4);
-}
+.card h2 { font-size: 3rem; font-weight: 700; color: #1a1a1a; margin-bottom: 20px; letter-spacing: -0.02em; line-height: 1.2; }
+.card p { font-size: 1.4rem; color: #6b7280; line-height: 1.6; font-weight: 400; }
 
-.close-button:active {
-  transform: translateX(-50%) translateY(0);
-}
-
-.card h2 {
-  font-size: 3rem;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin-bottom: 20px;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-.card p {
-  font-size: 1.4rem;
-  color: #6b7280;
-  line-height: 1.6;
-  font-weight: 400;
-}
-
-/* 카드 숫자 스타일 */
 .card-number {
-  font-size: 8rem;
-  font-weight: 700;
-  color: #1a1a1a;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  margin: 0;
-  opacity: 0.1;
-  z-index: 1;
+  font-size: 8rem; font-weight: 700; color: #1a1a1a;
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  margin: 0; opacity: 0.1; z-index: 1;
 }
+.card.fullscreen .card-number { font-size: 15rem; opacity: 0.05; }
 
-.card.fullscreen .card-number {
-  font-size: 15rem;
-  opacity: 0.05;
-}
-
-/* Human 이미지 스타일 */
-.human-image {
-  position: absolute;
-  width: 6%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: 50%;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  z-index: 15;
-  pointer-events: none;
-  transition: none;
-}
-
-.human-image:hover {
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
-}
-
-/* Card1 불규칙 배치 컨테이너 */
-.card1-scatter-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 10;
-}
-
-.scatter-item {
-  position: absolute;
-  aspect-ratio: 16 / 9;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 각 아이템 다른 크기 */
-.scatter-item[data-index="0"] {
-  width: 28%;
-}
-
-.scatter-item[data-index="1"] {
-  width: 22%;
-}
-
-.scatter-item[data-index="2"] {
-  width: 35%;
-}
-
-.scatter-item[data-index="3"] {
-  width: 18%;
-}
-
-.scatter-item[data-index="4"] {
-  width: 30%;
-}
-
-.scatter-item[data-index="5"] {
-  width: 25%;
-}
-
-/* 그리드 컨테이너 */
-.grid-container {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 70%;
-  max-width: 280px;
-  z-index: 10;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
-              max-width 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
-              gap 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.card.fullscreen .grid-container {
-  width: 60%;
-  max-width: 450px;
-  gap: 25px;
-}
-
-/* 축소 시 그리드 크기 줄이기 */
-.card.shrinking .grid-container {
-  width: 70%;
-  max-width: 280px;
-  gap: 15px;
-}
-
-/* card2 비디오 그리드 */
-#grid-container-2 {
-  max-width: 280px;
-  grid-auto-rows: 50px;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
-              max-width 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
-              grid-auto-rows 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-              gap 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.card.fullscreen #grid-container-2 {
-  width: 85%;
-  max-width: 700px;
-  height: auto;
-  grid-template-columns: repeat(3, 1fr);
-  grid-auto-rows: 100px;
-  gap: 12px;
-}
-
-.card.shrinking #grid-container-2 {
-  width: 70%;
-  max-width: 280px;
-  grid-auto-rows: 50px;
-  gap: 15px;
-}
-
-/* 다양한 크기의 그리드 아이템 */
-#grid-container-2 .grid-item {
-  aspect-ratio: auto;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-#grid-container-2 .size-large {
-  grid-column: span 2;
-  grid-row: span 2;
-}
-
-#grid-container-2 .size-medium {
-  grid-column: span 1;
-  grid-row: span 2;
-}
-
-#grid-container-2 .size-small {
-  grid-column: span 1;
-  grid-row: span 1;
-}
-
-/* 그리드 아이템 */
-.grid-item {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  perspective: 1000px;
-  cursor: pointer;
-}
-
-.grid-item .grid-front,
-.grid-item .grid-back {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  backface-visibility: hidden;
-  border-radius: 12px;
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.grid-item .grid-front {
-  background: linear-gradient(135deg, #e0e5ec 0%, #d0d5dc 100%);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
-
-.grid-item .grid-back {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  transform: rotateY(180deg);
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-}
-
-.grid-item.flipped .grid-front {
-  transform: rotateY(180deg);
-}
-
-.grid-item.flipped .grid-back {
-  transform: rotateY(0deg);
-}
-
-.grid-button {
-  background: white;
-  color: #3b82f6;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.grid-button:hover {
-  background: #f0f0f0;
-  transform: scale(1.05);
-}
-
-/* 팝업 스타일 */
-.popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.popup-overlay.active {
-  opacity: 1;
-  visibility: visible;
-}
-
-.popup-content {
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-  border-radius: 24px;
-  padding: 60px 50px;
-  max-width: 500px;
-  width: 90%;
-  text-align: center;
-  transform: scale(0.8) translateY(50px);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.3);
-}
-
-.popup-overlay.active .popup-content {
-  transform: scale(1) translateY(0);
-}
-
-.popup-content h2 {
-  font-size: 2rem;
-  color: #1a1a1a;
-  margin-bottom: 20px;
-}
-
-.popup-content p {
-  font-size: 1.1rem;
-  color: #6b7280;
-  margin-bottom: 30px;
-}
-
+/* 팝업 공통 */
 .popup-close-button {
-  background: #3b82f6;
-  color: white;
-  border: none;
-  padding: 16px 48px;
-  border-radius: 50px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
-  transition: all 0.3s ease;
+  background: #3b82f6; color: white; border: none;
+  padding: 16px 48px; border-radius: 50px; font-size: 1rem; font-weight: 600;
+  cursor: pointer; box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3); transition: all 0.3s ease;
 }
+.popup-close-button:hover { background: #2563eb; transform: translateY(-2px); box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4); }
 
-.popup-close-button:hover {
-  background: #2563eb;
-  transform: translateY(-2px);
-  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4);
-}
-
-/* 플레이 아이콘 */
-.play-icon {
-  font-size: 2rem;
-  color: #6b7280;
-}
-
-/* 그리드 내 비디오 스타일 */
-.grid-video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 12px;
-}
-
-/* 비디오 재생 오버레이 */
-.video-item {
-  position: relative;
-}
-
-.play-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 2rem;
-  color: white;
-  background: rgba(0, 0, 0, 0.5);
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  pointer-events: none;
-}
-
-.video-item:hover .play-overlay {
-  background: rgba(59, 130, 246, 0.8);
-  transform: translate(-50%, -50%) scale(1.1);
-}
-
-.video-item.playing .play-overlay {
-  opacity: 0;
-}
-
-/* Card 3 - 3D 나선형 계단 */
-.spiral-container {
-  display: block;
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  overflow: hidden;
-  perspective: 400px;
-  perspective-origin: 50% 80%;
-  background: linear-gradient(180deg, #0a0a15 0%, #1a1a2e 30%, #16213e 70%, #0f3460 100%);
-  border-radius: 24px;
-  transition: border-radius 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.card.fullscreen .spiral-container {
-  border-radius: 0;
-}
-
-.card.shrinking .spiral-container {
-  border-radius: 24px;
-}
-
-.spiral-scene {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-  transform-origin: 50% 80%;
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  transform: scale(0.6);
-}
-
-.card.fullscreen .spiral-scene {
-  transform: scale(1);
-}
-
-.card.shrinking .spiral-scene {
-  transform: scale(0.6);
-}
-
-/* 중앙 기둥 */
-.spiral-pillar {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: 3%;
-  min-width: 20px;
-  max-width: 40px;
-  height: 2000px;
-  background: linear-gradient(90deg, #2d2d44 0%, #4a4a6a 50%, #2d2d44 100%);
-  transform: translateX(-50%) translateZ(0);
-  border-radius: 20px;
-  box-shadow: inset -10px 0 20px rgba(0,0,0,0.5), inset 10px 0 20px rgba(255,255,255,0.1);
-}
-
-/* 3D 계단 */
-.spiral-stair {
-  position: absolute;
-  left: 50%;
-  bottom: 20%;
-  transform-style: preserve-3d;
-}
-
-/* 계단 상판 */
-.stair-top {
-  position: absolute;
-  width: 280px;
-  height: 120px;
-  background: linear-gradient(135deg, #8b7355 0%, #a08060 50%, #8b7355 100%);
-  transform: rotateX(90deg) translateZ(20px);
-  transform-origin: center bottom;
-  border-radius: 4px;
-  box-shadow: inset 0 0 30px rgba(0,0,0,0.4);
-  margin-left: -140px;
-}
-
-/* 계단 앞면 */
-.stair-front {
-  position: absolute;
-  width: 280px;
-  height: 40px;
-  background: linear-gradient(180deg, #6b5344 0%, #5a4535 100%);
-  transform: translateZ(60px);
-  border-radius: 2px;
-  margin-left: -140px;
-}
-
-/* 계단 측면 */
-.stair-side {
-  position: absolute;
-  width: 120px;
-  height: 40px;
-  background: linear-gradient(90deg, #5a4535 0%, #4a3525 100%);
-  transform: rotateY(90deg) translateZ(140px) translateX(-60px);
-}
-
-/* 난간 */
-.stair-railing {
-  position: absolute;
-  width: 10px;
-  height: 80px;
-  background: linear-gradient(90deg, #c9a86c 0%, #d4b87a 50%, #c9a86c 100%);
-  border-radius: 5px;
-  transform: translateX(150px) translateY(-80px) translateZ(60px);
-  box-shadow: 2px 2px 15px rgba(0,0,0,0.4);
-}
-
-/* 액자 프레임 */
-.stair-frame {
-  position: absolute;
-  width: 80px;
-  height: 80px;
-  background: linear-gradient(135deg, #d4af37 0%, #f4d03f 30%, #d4af37 70%, #aa8c2c 100%);
-  border-radius: 6px;
-  transform: translateX(-180px) translateY(-100px) translateZ(30px) rotateY(-20deg);
-  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-  padding: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.stair-frame:hover {
-  transform: translateX(-180px) translateY(-105px) translateZ(50px) rotateY(-20deg) scale(1.15);
-  box-shadow: 0 15px 50px rgba(212, 175, 55, 0.6);
-}
-
-.stair-frame-inner {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%);
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #667eea;
-  font-size: 1.8rem;
-}
-
-.spiral-progress {
-  position: fixed;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: rgba(255,255,255,0.7);
-  z-index: 20;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
-}
-
-/* Card3 비디오 팝업 */
-.card3-video-popup {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.95);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.4s ease;
-}
-
-.card3-video-popup.active {
-  opacity: 1;
-  visibility: visible;
-}
-
-.card3-video-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 30px;
-}
-
-#card3-video {
-  max-width: 80vw;
-  max-height: 60vh;
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
-/* 파티클 컨테이너 */
-.particle-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 30;
-  overflow: hidden;
-}
-
-.particle {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-  animation: particleExplode 1.5s ease-out forwards;
-}
-
+/* 파티클 공통 */
+.particle-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; overflow: hidden; }
+.particle { position: absolute; border-radius: 50%; pointer-events: none; animation: particleExplode 1.5s ease-out forwards; }
 @keyframes particleExplode {
-  0% {
-    opacity: 1;
-    transform: translate(0, 0) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(var(--tx), var(--ty)) scale(0);
-  }
+  0% { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
 }
 
 /* 음소거 버튼 */
-.mute-button {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: white;
-  border: none;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  cursor: pointer;
-  z-index: 99999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-}
+.mute-button { position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; border-radius: 50%; background: white; border: none; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); cursor: pointer; z-index: 99999; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
+.mute-button:hover { transform: scale(1.1); box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2); }
+.mute-icon { font-size: 1.5rem; }
+.mute-button.unmuted { background: #3b82f6; }
+.mute-button.unmuted .mute-icon { filter: brightness(10); }
 
-.mute-button:hover {
-  transform: scale(1.1);
-  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
-}
+/* 카드 스택 상태 */
+.card.active { transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1); opacity: 1; visibility: visible; z-index: 10; pointer-events: auto; animation: none; }
+.card.prev-1 { transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5); opacity: 1; visibility: visible; z-index: 5; filter: brightness(0.9); pointer-events: none; }
+.card.prev-2 { transform: translateZ(-200px) translateY(70%) rotateX(0deg) scale(0.4); opacity: 1; visibility: hidden; z-index: 4; filter: brightness(0.85); pointer-events: none; }
+.card.next-hidden { transform: translateZ(-100px) translateY(100%) rotateX(0deg) scale(0.5); opacity: 1; visibility: hidden; z-index: 4; pointer-events: none; }
 
-.mute-icon {
-  font-size: 1.5rem;
-}
+/* 스택 애니메이션 클래스 */
+.card.animating-exit-down { animation: exitDown 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; z-index: 5 !important; }
+.card.animating-enter-from-bottom { animation: enterFromBottom 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; z-index: 10 !important; opacity: 1 !important; }
+.card.animating-prev-exit { animation: prevExit 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; z-index: 4 !important; }
+.card.animating-exit-down-tilt { animation: exitDownTilt 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; z-index: 10 !important; }
+.card.animating-enter-from-top { animation: enterFromTop 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; z-index: 5 !important; }
+.card.animating-prev-enter { animation: prevEnter 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; z-index: 4 !important; opacity: 1 !important; }
 
-.mute-button.unmuted {
-  background: #3b82f6;
-}
-
-.mute-button.unmuted .mute-icon {
-  filter: brightness(10);
-}
-
-.card.active {
-  transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
-  opacity: 1;
-  z-index: 10;
-  pointer-events: auto;
-  animation: none;
-}
-
-/* 바로 이전 카드 - 현재 카드 뒤에 보임 */
-.card.prev-1 {
-  transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5);
-  opacity: 1;
-  z-index: 5;
-  filter: brightness(0.9);
-  pointer-events: none;
-}
-
-/* 그 이전 카드들 - 안 보임 */
-.card.prev-2 {
-  transform: translateZ(-200px) translateY(70%) rotateX(0deg) scale(0.4);
-  opacity: 0;
-  z-index: 4;
-  filter: brightness(0.85);
-  pointer-events: none;
-}
-
-/* 다음 카드들 - 안 보임 */
-.card.next-hidden {
-  transform: translateZ(-100px) translateY(100%) rotateX(0deg) scale(0.5);
-  opacity: 0;
-  z-index: 4;
-  pointer-events: none;
-}
-
-/* 휠 내릴때: 현재 카드가 뒤로 내려가며 사라짐 */
-.card.animating-exit-down {
-  animation: exitDown 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  z-index: 5 !important;
-}
-
-/* 휠 내릴때: 다음 카드가 앞에서 기울어진채 올라옴 */
-.card.animating-enter-from-bottom {
-  animation: enterFromBottom 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  z-index: 10 !important;
-  opacity: 1 !important;
-}
-
-/* 휠 내릴때: 이전 카드(prev-1)가 더 뒤로 내려감 */
-.card.animating-prev-exit {
-  animation: prevExit 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  z-index: 4 !important;
-}
-
-/* 휠 올릴때: 현재 카드가 아래로 내려가며 앞으로 기울어짐 */
-.card.animating-exit-down-tilt {
-  animation: exitDownTilt 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  z-index: 10 !important;
-}
-
-/* 휠 올릴때: 이전 카드가 뒤에서 위로 올라오며 커짐 */
-.card.animating-enter-from-top {
-  animation: enterFromTop 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  z-index: 5 !important;
-}
-
-/* 휠 올릴때: 그 이전 카드(prev-2)가 prev-1 위치로 올라옴 */
-.card.animating-prev-enter {
-  animation: prevEnter 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  z-index: 4 !important;
-  opacity: 1 !important;
-}
-
-/* 현재 카드가 뒤 아래로 내려가며 50% 작아짐 (휠 내릴때) */
 @keyframes exitDown {
-  0% {
-    transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
-    opacity: 1;
-    filter: brightness(1);
-  }
-  100% {
-    transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5);
-    opacity: 1;
-    filter: brightness(0.9);
-  }
+  0% { transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1); opacity: 1; filter: brightness(1); }
+  100% { transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5); opacity: 1; filter: brightness(0.9); }
 }
-
-/* 다음 카드가 앞으로 기울어진채 아래에서 올라옴 (휠 내릴때) */
 @keyframes enterFromBottom {
-  0% {
-    transform: translateZ(150px) translateY(120%) rotateX(-50deg) scale(1);
-    opacity: 1;
-    filter: brightness(1);
-  }
-  100% {
-    transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
-    opacity: 1;
-    filter: brightness(1);
-  }
+  0% { transform: translateZ(150px) translateY(120%) rotateX(-50deg) scale(1); opacity: 1; filter: brightness(1); }
+  100% { transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1); opacity: 1; filter: brightness(1); }
 }
-
-/* 현재 카드가 아래로 내려가며 앞으로 기울어짐 (휠 올릴때) */
 @keyframes exitDownTilt {
-  0% {
-    transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
-    opacity: 1;
-    filter: brightness(1);
-  }
-  100% {
-    transform: translateZ(150px) translateY(120%) rotateX(-50deg) scale(1);
-    opacity: 0;
-    filter: brightness(1);
-  }
+  0% { transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1); opacity: 1; filter: brightness(1); visibility: visible; }
+  100% { transform: translateZ(150px) translateY(120%) rotateX(-50deg) scale(1); opacity: 1; filter: brightness(1); visibility: hidden; }
 }
-
-/* 이전 카드가 뒤 아래에서 위로 올라오며 커짐 (휠 올릴때) */
 @keyframes enterFromTop {
-  0% {
-    transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5);
-    opacity: 1;
-    filter: brightness(0.9);
-  }
-  100% {
-    transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1);
-    opacity: 1;
-    filter: brightness(1);
-  }
+  0% { transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5); opacity: 1; filter: brightness(0.9); }
+  100% { transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1); opacity: 1; filter: brightness(1); }
 }
-
-/* 휠 내릴때: 이전 카드(prev-1)가 더 뒤로 내려감 */
 @keyframes prevExit {
-  0% {
-    transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5);
-    opacity: 1;
-    filter: brightness(0.9);
-  }
-  100% {
-    transform: translateZ(-200px) translateY(70%) rotateX(0deg) scale(0.4);
-    opacity: 0;
-    filter: brightness(0.85);
-  }
+  0% { transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5); opacity: 1; filter: brightness(0.9); visibility: visible; }
+  100% { transform: translateZ(-200px) translateY(70%) rotateX(0deg) scale(0.4); opacity: 1; filter: brightness(0.85); visibility: hidden; }
 }
-
-/* 휠 올릴때: 그 이전 카드(prev-2)가 prev-1 위치로 올라옴 */
 @keyframes prevEnter {
-  0% {
-    transform: translateZ(-200px) translateY(70%) rotateX(0deg) scale(0.4);
-    opacity: 0;
-    filter: brightness(0.85);
-  }
-  100% {
-    transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5);
-    opacity: 1;
-    filter: brightness(0.9);
-  }
-}
-
-/* Card 5 - Three.js 3D 나선형 계단 */
-.card5-threejs-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 24px;
-  overflow: hidden;
-  background: #f5f5f5;
-}
-
-.card.fullscreen .card5-threejs-container {
-  border-radius: 0;
-}
-
-.card.shrinking .card5-threejs-container {
-  border-radius: 24px;
-}
-
-#card-5 .card-number {
-  z-index: 2;
-  pointer-events: none;
-}
-
-.card5-progress {
-  position: fixed;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #1a1a1a;
-  z-index: 20;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.8);
-}
-
-.card.fullscreen .card5-progress {
-  opacity: 1;
-}
-
-.card5-hint {
-  position: absolute;
-  bottom: 150px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.9rem;
-  color: #666;
-  z-index: 20;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  white-space: nowrap;
-}
-
-.card.fullscreen .card5-hint {
-  opacity: 0.7;
-  animation: fadeHint 3s ease-in-out forwards;
-}
-
-@keyframes fadeHint {
-  0%, 70% {
-    opacity: 0.7;
-  }
-  100% {
-    opacity: 0;
-  }
+  0% { transform: translateZ(-200px) translateY(70%) rotateX(0deg) scale(0.4); opacity: 1; filter: brightness(0.85); visibility: hidden; }
+  100% { transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5); opacity: 1; filter: brightness(0.9); visibility: visible; }
 }
 
 /* Indicator */
-.indicator {
-  position: fixed;
-  right: 40px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  z-index: 100;
-}
+.indicator { position: fixed; right: 40px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 16px; z-index: 100; }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: #cbd5e1; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; position: relative; }
+.dot::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid transparent; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.dot:hover { background: #94a3b8; transform: scale(1.2); }
+.dot.active { background: #3b82f6; transform: scale(1.4); }
+.dot.active::after { border-color: #3b82f6; opacity: 0.3; }
 
-.dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #cbd5e1;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  cursor: pointer;
-  position: relative;
-}
-
-.dot::after {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.dot:hover {
-  background: #94a3b8;
-  transform: scale(1.2);
-}
-
-.dot.active {
-  background: #3b82f6;
-  transform: scale(1.4);
-}
-
-.dot.active::after {
-  border-color: #3b82f6;
-  opacity: 0.3;
-}
-
+/* 공통 모바일 */
 @media (max-width: 768px) {
-  .card-stack {
-    width: 90%;
-    height: 400px;
-  }
-  
-  .card {
-    padding: 30px 20px;
-    border-radius: 16px;
-  }
-  
-  .card h2 {
-    font-size: 1.8rem;
-  }
-  
-  .card p {
-    font-size: 1rem;
-  }
-  
-  .card-number {
-    font-size: 5rem;
-  }
-  
-  .card.fullscreen .card-number {
-    font-size: 8rem;
-  }
-
-  .card.fullscreen {
-    padding: 50px 20px 100px;
-    border-radius: 0;
-  }
-
-  .indicator {
-    right: 15px;
-    gap: 12px;
-  }
-  
-  .dot {
-    width: 10px;
-    height: 10px;
-  }
-
-  .close-button {
-    bottom: 25px;
-    padding: 12px 35px;
-    font-size: 0.85rem;
-  }
-  
-  /* 그리드 모바일 */
-  .grid-container {
-    width: 85%;
-    max-width: 280px;
-    gap: 8px;
-  }
-  
-  .card.fullscreen .grid-container {
-    width: 85%;
-    max-width: 350px;
-    gap: 10px;
-  }
-  
-  .card.fullscreen #grid-container-1 {
-    max-width: 300px;
-  }
-  
-  .card.fullscreen #grid-container-2 {
-    width: 90%;
-    max-width: 400px;
-    gap: 8px;
-    grid-auto-rows: 70px;
-  }
-  
-  #grid-container-2 .size-large {
-    grid-column: span 2;
-    grid-row: span 2;
-  }
-  
-  #grid-container-2 .size-medium {
-    grid-column: span 1;
-    grid-row: span 2;
-  }
-  
-  #grid-container-2 .size-small {
-    grid-column: span 1;
-    grid-row: span 1;
-  }
-  
-  .grid-button {
-    padding: 8px 16px;
-    font-size: 0.8rem;
-  }
-  
-  /* 비디오 오버레이 모바일 */
-  .play-overlay {
-    width: 40px;
-    height: 40px;
-    font-size: 1.5rem;
-  }
-  
-  /* 음소거 버튼 모바일 */
-  .mute-button {
-    width: 44px;
-    height: 44px;
-    bottom: 20px;
-    right: 20px;
-  }
-  
-  .mute-icon {
-    font-size: 1.3rem;
-  }
-  
-  /* human 이미지 모바일 */
-  .human-image {
-    width: 60px;
-    height: 60px;
-  }
-  
-  /* 팝업 모바일 */
-  .popup-content {
-    padding: 40px 30px;
-    width: 90%;
-    max-width: 350px;
-  }
-  
-  .popup-content h2 {
-    font-size: 1.5rem;
-  }
-  
-  .popup-content p {
-    font-size: 1rem;
-  }
-  
-  .popup-close-button {
-    padding: 14px 40px;
-    font-size: 0.9rem;
-  }
-  
-  /* Card3 나선 계단 모바일 */
-  .spiral-container {
-    perspective: 300px;
-  }
-  
-  .stair-top {
-    width: 200px;
-    height: 80px;
-    margin-left: -100px;
-  }
-  
-  .stair-front {
-    width: 200px;
-    margin-left: -100px;
-  }
-  
-  .stair-frame {
-    width: 60px;
-    height: 60px;
-    transform: translateX(-130px) translateY(-80px) translateZ(30px) rotateY(-20deg);
-  }
-  
-  .stair-frame:hover {
-    transform: translateX(-130px) translateY(-85px) translateZ(50px) rotateY(-20deg) scale(1.1);
-  }
-  
-  .stair-frame-inner {
-    font-size: 1.3rem;
-  }
-  
-  .spiral-progress {
-    font-size: 1.2rem;
-    bottom: 80px;
-  }
-  
-  #card3-video {
-    max-width: 95vw;
-    max-height: 50vh;
-  }
-  
-  /* Card5 모바일 */
-  .card5-progress {
-    font-size: 1.4rem;
-    bottom: 80px;
-  }
-  
-  .card5-hint {
-    font-size: 0.8rem;
-    bottom: 120px;
-  }
+  .card-stack { width: 90%; height: 400px; }
+  .card { padding: 30px 20px; border-radius: 16px; }
+  .card h2 { font-size: 1.8rem; }
+  .card p { font-size: 1rem; }
+  .card-number { font-size: 5rem; }
+  .card.fullscreen .card-number { font-size: 8rem; }
+  .card.fullscreen { padding: 50px 20px 100px; border-radius: 0; }
+  .indicator { right: 15px; gap: 12px; }
+  .dot { width: 10px; height: 10px; }
+  .close-button { bottom: 25px; padding: 12px 35px; font-size: 0.85rem; }
+  .mute-button { width: 44px; height: 44px; bottom: 20px; right: 20px; }
+  .mute-icon { font-size: 1.3rem; }
+  .popup-close-button { padding: 14px 40px; font-size: 0.9rem; }
 }
 
-/* 아주 작은 화면 */
 @media (max-width: 400px) {
-  .card-stack {
-    width: 95%;
-    height: 350px;
-  }
-  
-  .card {
-    padding: 25px 15px;
-  }
-  
-  .card-number {
-    font-size: 4rem;
-  }
-  
-  .card.fullscreen .card-number {
-    font-size: 6rem;
-  }
-  
-  .grid-container {
-    max-width: 240px;
-    gap: 6px;
-  }
-  
-  .card.fullscreen .grid-container {
-    max-width: 280px;
-  }
-  
-  .card.fullscreen #grid-container-2 {
-    max-width: 320px;
-    grid-auto-rows: 60px;
-  }
+  .card-stack { width: 95%; height: 350px; }
+  .card { padding: 25px 15px; }
+  .card-number { font-size: 4rem; }
+  .card.fullscreen .card-number { font-size: 6rem; }
 }

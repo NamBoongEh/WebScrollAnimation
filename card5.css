@@ -1,0 +1,76 @@
+/* ===== Card 5 - Three.js 나선형 계단 ===== */
+
+.c5-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 24px;
+  transition: border-radius 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #1a1a2e;
+}
+
+.c5-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.card.fullscreen .c5-container { border-radius: 0; }
+.card.shrinking .c5-container { border-radius: 24px; }
+
+/* 진행률 */
+.c5-progress {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  z-index: 20;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  display: none;
+}
+
+.card.fullscreen .c5-progress { display: block; }
+
+/* Card5 비디오 팝업 */
+.c5-video-popup {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.4s ease;
+}
+
+.c5-video-popup.active { opacity: 1; visibility: visible; }
+
+.c5-video-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+
+#c5-video {
+  max-width: 80vw;
+  max-height: 60vh;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 768px) {
+  .c5-progress { font-size: 1.2rem; bottom: 70px; }
+  #c5-video { max-width: 95vw; max-height: 50vh; }
+}

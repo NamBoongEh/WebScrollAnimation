@@ -1,0 +1,107 @@
+/* ===== Card 1 ===== */
+
+.human-image {
+  position: absolute;
+  width: 6%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 50%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  z-index: 15;
+  pointer-events: none;
+  transition: none;
+}
+
+.human-image:hover {
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+}
+
+.card1-scatter-container {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 10;
+}
+
+.scatter-item {
+  position: absolute;
+  aspect-ratio: 16 / 9;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scatter-item[data-index="0"] { width: 28%; }
+.scatter-item[data-index="1"] { width: 22%; }
+.scatter-item[data-index="2"] { width: 35%; }
+.scatter-item[data-index="3"] { width: 18%; }
+.scatter-item[data-index="4"] { width: 30%; }
+.scatter-item[data-index="5"] { width: 25%; }
+
+.grid-item {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  perspective: 1000px;
+  cursor: pointer;
+}
+
+.grid-item .grid-front,
+.grid-item .grid-back {
+  position: absolute;
+  width: 100%; height: 100%;
+  backface-visibility: hidden;
+  border-radius: 12px;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex; align-items: center; justify-content: center;
+}
+
+.grid-item .grid-front {
+  background: linear-gradient(135deg, #e0e5ec 0%, #d0d5dc 100%);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.grid-item .grid-back {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  transform: rotateY(180deg);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.grid-item.flipped .grid-front { transform: rotateY(180deg); }
+.grid-item.flipped .grid-back { transform: rotateY(0deg); }
+
+.grid-button {
+  background: white; color: #3b82f6; border: none;
+  padding: 10px 20px; border-radius: 20px;
+  font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  transition: all 0.3s ease;
+}
+.grid-button:hover { background: #f0f0f0; transform: scale(1.05); }
+
+/* Card1 팝업 */
+.popup-overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2000; opacity: 0; visibility: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.popup-overlay.active { opacity: 1; visibility: visible; }
+
+.popup-content {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 24px; padding: 60px 50px;
+  max-width: 500px; width: 90%; text-align: center;
+  transform: scale(0.8) translateY(50px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.3);
+}
+.popup-overlay.active .popup-content { transform: scale(1) translateY(0); }
+.popup-content h2 { font-size: 2rem; color: #1a1a1a; margin-bottom: 20px; }
+.popup-content p { font-size: 1.1rem; color: #6b7280; margin-bottom: 30px; }
+
+/* Card1 모바일 */
+@media (max-width: 768px) {
+  .human-image { width: 60px; height: 60px; }
+  .grid-button { padding: 8px 16px; font-size: 0.8rem; }
+  .popup-content { padding: 40px 30px; width: 90%; max-width: 350px; }
+  .popup-content h2 { font-size: 1.5rem; }
+  .popup-content p { font-size: 1rem; }
+}
