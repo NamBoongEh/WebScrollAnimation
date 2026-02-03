@@ -3,73 +3,52 @@
 .grid-container {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
+  gap: clamp(8px, 1.5vw, 15px);
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 70%; max-width: 280px;
+  width: 80%;
+  max-width: min(50vh, 400px);
   z-index: 10;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-              max-width 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-              gap 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.card.fullscreen .grid-container { width: 60%; max-width: 450px; gap: 25px; }
-.card.shrinking .grid-container { width: 70%; max-width: 280px; gap: 15px; }
+.card.fullscreen .grid-container {
+  width: 85%;
+  max-width: min(80vh, 800px);
+  gap: clamp(10px, 2vw, 25px);
+}
+.card.shrinking .grid-container { width: 80%; max-width: min(50vh, 400px); }
 
 #grid-container-2 {
-  max-width: 280px;
-  grid-auto-rows: 50px;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-              max-width 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-              grid-auto-rows 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-              gap 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  grid-auto-rows: clamp(40px, 8vh, 80px);
 }
 
 .card.fullscreen #grid-container-2 {
-  width: 85%; max-width: 700px; height: auto;
-  grid-template-columns: repeat(3, 1fr);
-  grid-auto-rows: 100px; gap: 12px;
+  grid-auto-rows: clamp(60px, 12vh, 120px);
 }
-.card.shrinking #grid-container-2 { width: 70%; max-width: 280px; grid-auto-rows: 50px; gap: 15px; }
 
-#grid-container-2 .grid-item { aspect-ratio: auto; border-radius: 12px; overflow: hidden; }
+#grid-container-2 .grid-item { aspect-ratio: auto; border-radius: min(12px, 2vw); overflow: hidden; }
 #grid-container-2 .size-large { grid-column: span 2; grid-row: span 2; }
 #grid-container-2 .size-medium { grid-column: span 1; grid-row: span 2; }
 #grid-container-2 .size-small { grid-column: span 1; grid-row: span 1; }
 
-.play-icon { font-size: 2rem; color: #6b7280; }
+.play-icon { font-size: clamp(1.5rem, 3vw, 2rem); color: #6b7280; }
 
-.grid-video { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+.grid-video { width: 100%; height: 100%; object-fit: cover; border-radius: min(12px, 2vw); }
 
 .video-item { position: relative; }
 
 .play-overlay {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 2rem; color: white;
+  font-size: clamp(1.2rem, 2.5vw, 2rem); color: white;
   background: rgba(0, 0, 0, 0.5);
-  width: 50px; height: 50px; border-radius: 50%;
+  width: clamp(35px, 6vw, 50px);
+  height: clamp(35px, 6vw, 50px);
+  border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.3s ease; pointer-events: none;
 }
 .video-item:hover .play-overlay { background: rgba(59, 130, 246, 0.8); transform: translate(-50%, -50%) scale(1.1); }
 .video-item.playing .play-overlay { opacity: 0; }
-
-/* Card2 모바일 */
-@media (max-width: 768px) {
-  .grid-container { width: 85%; max-width: 280px; gap: 8px; }
-  .card.fullscreen .grid-container { width: 85%; max-width: 350px; gap: 10px; }
-  .card.fullscreen #grid-container-1 { max-width: 300px; }
-  .card.fullscreen #grid-container-2 { width: 90%; max-width: 400px; gap: 8px; grid-auto-rows: 70px; }
-  #grid-container-2 .size-large { grid-column: span 2; grid-row: span 2; }
-  #grid-container-2 .size-medium { grid-column: span 1; grid-row: span 2; }
-  #grid-container-2 .size-small { grid-column: span 1; grid-row: span 1; }
-  .play-overlay { width: 40px; height: 40px; font-size: 1.5rem; }
-}
-
-@media (max-width: 400px) {
-  .grid-container { max-width: 240px; gap: 6px; }
-  .card.fullscreen .grid-container { max-width: 280px; }
-  .card.fullscreen #grid-container-2 { max-width: 320px; grid-auto-rows: 60px; }
-}

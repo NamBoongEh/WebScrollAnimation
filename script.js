@@ -429,29 +429,39 @@ function animateCardParallax() {
         prevCard.style.filter = `brightness(${0.9 + currentScrollAmount * 0.1})`;
       }
     } else if (currentScrollDirection > 5) {
-      // 아래로 스크롤: Y 아래로, Z 뒤로, 기울기 없음
+      // 아래로 스크롤: 현재 카드가 뒤로 내려감
       activeCard.style.transform = `translateZ(${currentScrollZ}px) translate(${moveX}px, ${moveY + currentScrollY}px)`;
       activeCard.style.transformOrigin = "center center";
       activeCard.style.zIndex = "5";
-
-      // 이전 카드도 Z와 Y 동작 (더 뒤로, 더 아래로)
+      
+      // 이전 카드 (더 뒤로)
       if (prevCard) {
-        const prevZ = -100 - currentScrollAmount * 100; // -100 → -200
-        const prevY = 60 + currentScrollAmount * 10; // 60% → 70%
-        const prevScale = 0.5 - currentScrollAmount * 0.1; // 0.5 → 0.4
+        const prevZ = -100 - currentScrollAmount * 100;
+        const prevY = 60 + currentScrollAmount * 10;
+        const prevScale = 0.5 - currentScrollAmount * 0.1;
         prevCard.style.transform = `translateZ(${prevZ}px) translateY(${prevY}%) scale(${prevScale})`;
         prevCard.style.filter = `brightness(${0.9 - currentScrollAmount * 0.05})`;
+        prevCard.style.zIndex = "3";
       }
 
-      // 다음 카드: 완전히 화면 밖 아래에서 올라옴
+      // 다음 카드: 아래에서 올라옴
       if (nextCard) {
-        const nextY = 150 - currentScrollAmount * 150; // 150% → 0%
-        const nextScale = 1 + 0.3 * (1 - currentScrollAmount); // 1.3 → 1.0
-        const nextTilt = -40 * (1 - currentScrollAmount); // -40도 → 0도
-        nextCard.style.transform = `translateY(${nextY}%) rotateX(${nextTilt}deg) scale(${nextScale})`;
-        nextCard.style.transformOrigin = "center top";
-        nextCard.style.visibility = "visible";
         nextCard.style.zIndex = "15";
+        nextCard.style.transformOrigin = "center bottom";
+        
+        if (currentScrollAmount < 0.15) {
+          // 처음엔 안 보임 (화면 밖 아래쪽)
+          nextCard.style.transform = `translateZ(300px) translateY(120%) scale(1.2)`;
+          nextCard.style.visibility = "hidden";
+        } else {
+          // 0.15 이후: 아래에서 올라오면서 나타남
+          const t = (currentScrollAmount - 0.15) / 0.85; // 0~1
+          const nextZ = 300 * (1 - t); // 300 → 0
+          const nextY = 120 * (1 - t); // 120% → 0%
+          const nextScale = 1.2 - t * 0.2; // 1.2 → 1.0
+          nextCard.style.transform = `translateZ(${nextZ}px) translateY(${nextY}%) scale(${nextScale})`;
+          nextCard.style.visibility = "visible";
+        }
       }
     } else {
       // 스크롤 없음: 기본 패럴랙스만 (currentScrollY 유지)

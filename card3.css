@@ -5,7 +5,7 @@
   width: 100%; height: 100%;
   position: absolute; top: 0; left: 0;
   overflow: hidden;
-  perspective: 400px;
+  perspective: clamp(300px, 40vw, 500px);
   perspective-origin: 50% 80%;
   background: linear-gradient(180deg, #0a0a15 0%, #1a1a2e 30%, #16213e 70%, #0f3460 100%);
   border-radius: 24px;
@@ -19,14 +19,14 @@
   transform-style: preserve-3d;
   transform-origin: 50% 80%;
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  transform: scale(0.6);
+  transform: scale(0.5);
 }
 .card.fullscreen .spiral-scene { transform: scale(1); }
-.card.shrinking .spiral-scene { transform: scale(0.6); }
+.card.shrinking .spiral-scene { transform: scale(0.5); }
 
 .spiral-pillar {
   position: absolute; left: 50%; bottom: 0;
-  width: 3%; min-width: 20px; max-width: 40px; height: 2000px;
+  width: clamp(15px, 2vw, 40px); height: 2000px;
   background: linear-gradient(90deg, #2d2d44 0%, #4a4a6a 50%, #2d2d44 100%);
   transform: translateX(-50%) translateZ(0);
   border-radius: 20px;
@@ -40,52 +40,57 @@
 
 .stair-top {
   position: absolute;
-  width: 280px; height: 120px;
+  width: clamp(180px, 25vw, 320px);
+  height: clamp(80px, 10vw, 140px);
   background: linear-gradient(135deg, #8b7355 0%, #a08060 50%, #8b7355 100%);
   transform: rotateX(90deg) translateZ(20px);
   transform-origin: center bottom;
   border-radius: 4px;
   box-shadow: inset 0 0 30px rgba(0,0,0,0.4);
-  margin-left: -140px;
+  margin-left: clamp(-90px, -12.5vw, -160px);
 }
 
 .stair-front {
   position: absolute;
-  width: 280px; height: 40px;
+  width: clamp(180px, 25vw, 320px);
+  height: clamp(30px, 4vw, 50px);
   background: linear-gradient(180deg, #6b5344 0%, #5a4535 100%);
   transform: translateZ(60px);
   border-radius: 2px;
-  margin-left: -140px;
+  margin-left: clamp(-90px, -12.5vw, -160px);
 }
 
 .stair-side {
   position: absolute;
-  width: 120px; height: 40px;
+  width: clamp(80px, 10vw, 140px);
+  height: clamp(30px, 4vw, 50px);
   background: linear-gradient(90deg, #5a4535 0%, #4a3525 100%);
-  transform: rotateY(90deg) translateZ(140px) translateX(-60px);
+  transform: rotateY(90deg) translateZ(clamp(90px, 12.5vw, 160px)) translateX(-50%);
 }
 
 .stair-railing {
   position: absolute;
-  width: 10px; height: 80px;
+  width: clamp(6px, 1vw, 12px);
+  height: clamp(60px, 8vw, 100px);
   background: linear-gradient(90deg, #c9a86c 0%, #d4b87a 50%, #c9a86c 100%);
   border-radius: 5px;
-  transform: translateX(150px) translateY(-80px) translateZ(60px);
+  transform: translateX(clamp(100px, 13vw, 170px)) translateY(clamp(-60px, -8vw, -100px)) translateZ(60px);
   box-shadow: 2px 2px 15px rgba(0,0,0,0.4);
 }
 
 .stair-frame {
   position: absolute;
-  width: 80px; height: 80px;
+  width: clamp(50px, 7vw, 90px);
+  height: clamp(50px, 7vw, 90px);
   background: linear-gradient(135deg, #d4af37 0%, #f4d03f 30%, #d4af37 70%, #aa8c2c 100%);
   border-radius: 6px;
-  transform: translateX(-180px) translateY(-100px) translateZ(30px) rotateY(-20deg);
+  transform: translateX(clamp(-120px, -16vw, -200px)) translateY(clamp(-70px, -9vw, -120px)) translateZ(30px) rotateY(-20deg);
   box-shadow: 0 10px 40px rgba(0,0,0,0.6);
   padding: 6px; cursor: pointer;
   transition: all 0.3s ease;
 }
 .stair-frame:hover {
-  transform: translateX(-180px) translateY(-105px) translateZ(50px) rotateY(-20deg) scale(1.15);
+  transform: translateX(clamp(-120px, -16vw, -200px)) translateY(clamp(-75px, -10vw, -125px)) translateZ(50px) rotateY(-20deg) scale(1.15);
   box-shadow: 0 15px 50px rgba(212, 175, 55, 0.6);
 }
 
@@ -94,13 +99,14 @@
   background: linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%);
   border-radius: 3px;
   display: flex; align-items: center; justify-content: center;
-  color: #667eea; font-size: 1.8rem;
+  color: #667eea;
+  font-size: clamp(1.2rem, 2vw, 2rem);
 }
 
 .spiral-progress {
-  position: fixed; bottom: 100px; left: 50%;
+  position: fixed; bottom: clamp(70px, 10vh, 100px); left: 50%;
   transform: translateX(-50%);
-  font-size: 1.5rem; font-weight: 700;
+  font-size: clamp(1.2rem, 2vw, 1.6rem); font-weight: 700;
   color: rgba(255,255,255,0.7); z-index: 20;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
 }
@@ -116,16 +122,9 @@
 
 .card3-video-content { display: flex; flex-direction: column; align-items: center; gap: 30px; }
 
-#card3-video { max-width: 80vw; max-height: 60vh; border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
-
-/* Card3 모바일 */
-@media (max-width: 768px) {
-  .spiral-container { perspective: 300px; }
-  .stair-top { width: 200px; height: 80px; margin-left: -100px; }
-  .stair-front { width: 200px; margin-left: -100px; }
-  .stair-frame { width: 60px; height: 60px; transform: translateX(-130px) translateY(-80px) translateZ(30px) rotateY(-20deg); }
-  .stair-frame:hover { transform: translateX(-130px) translateY(-85px) translateZ(50px) rotateY(-20deg) scale(1.1); }
-  .stair-frame-inner { font-size: 1.3rem; }
-  .spiral-progress { font-size: 1.2rem; bottom: 80px; }
-  #card3-video { max-width: 95vw; max-height: 50vh; }
+#card3-video {
+  max-width: min(80vw, 900px);
+  max-height: 60vh;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }

@@ -17,9 +17,10 @@ body, html {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 85%;
-  max-width: 700px;
-  height: 500px;
+  width: 70vw;
+  height: 70vh;
+  max-width: 1200px;
+  max-height: 800px;
   perspective: 2000px;
   perspective-origin: 50% 50%;
 }
@@ -116,6 +117,7 @@ body, html {
   font-size: 8rem; font-weight: 700; color: #1a1a1a;
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   margin: 0; opacity: 0.1; z-index: 1;
+  pointer-events: none;
 }
 .card.fullscreen .card-number { font-size: 15rem; opacity: 0.05; }
 
@@ -191,7 +193,7 @@ body, html {
 
 /* 공통 모바일 */
 @media (max-width: 768px) {
-  .card-stack { width: 90%; height: 400px; }
+  .card-stack { width: 85vw; height: 60vh; max-width: none; max-height: none; }
   .card { padding: 30px 20px; border-radius: 16px; }
   .card h2 { font-size: 1.8rem; }
   .card p { font-size: 1rem; }
@@ -207,7 +209,7 @@ body, html {
 }
 
 @media (max-width: 400px) {
-  .card-stack { width: 95%; height: 350px; }
+  .card-stack { width: 90vw; height: 55vh; }
   .card { padding: 25px 15px; }
   .card-number { font-size: 4rem; }
   .card.fullscreen .card-number { font-size: 6rem; }
