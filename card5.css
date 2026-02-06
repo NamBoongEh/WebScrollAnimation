@@ -1,6 +1,7 @@
 /* ===== Card 5 - Three.js 나선형 계단 ===== */
 
-.c5-container {
+/* three-container가 카드 전체를 채우도록 */
+#three-container {
   position: absolute;
   top: 0;
   left: 0;
@@ -12,17 +13,17 @@
   background: #ffffff;
 }
 
-.c5-container canvas {
+#three-container canvas {
   display: block;
   width: 100% !important;
   height: 100% !important;
 }
 
-.card.fullscreen .c5-container { border-radius: 0; }
-.card.shrinking .c5-container { border-radius: 24px; }
+.card.fullscreen #three-container { border-radius: 0; }
+.card.shrinking #three-container { border-radius: 24px; }
 
 /* 진행률 */
-.c5-progress {
+#floor-indicator-5 {
   position: absolute;
   bottom: clamp(60px, 10vh, 100px);
   left: 50%;
@@ -36,7 +37,7 @@
   display: none;
 }
 
-.card.fullscreen .c5-progress { display: block; }
+.card.fullscreen #floor-indicator-5 { display: block; }
 
 /* Card5 비디오 팝업 */
 .c5-video-popup {

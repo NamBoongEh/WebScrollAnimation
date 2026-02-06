@@ -1,183 +1,107 @@
-// Card 1 내부 애니메이션
-(function() {
-  const card1 = document.getElementById('card-1');
-  const humanImage = document.getElementById('human-image');
-  const gridContainer = document.getElementById('grid-container-1');
-  const gridItems = gridContainer ? gridContainer.querySelectorAll('.grid-item') : [];
-  const popupOverlay = document.getElementById('popup-overlay');
-  const popupClose = document.getElementById('popup-close');
-  
-  if (!card1 || !humanImage) return;
-  
-  // Human 위치 (비율로 저장 - 0~1) - 버튼 없는 최상단 영역에 위치
-  let ratioX = 0.50;
-  let ratioY = 0.08;
-  let wasFullscreen = false;
-  let isTransitioning = false;
-  
-  // human 위치를 퍼센트로 설정 (CSS가 자동으로 처리)
-  function updateHumanPositionPercent() {
-    // 퍼센트 기반으로 설정 - 이미지 중심이 해당 비율에 위치하도록
-    // left, top을 퍼센트로, transform으로 중앙 정렬
-    humanImage.style.left = (ratioX * 100) + '%';
-    humanImage.style.top = (ratioY * 100) + '%';
-    humanImage.style.transform = 'translate(-50%, -50%)';
-  }
-  
-  // fullscreen 상태 변화 감지
-  function checkFullscreenChange() {
-    const isCurrentlyFullscreen = card1.classList.contains('fullscreen');
+/**
+ * ========================================
+ * card1.js - 충돌 감지 플립 카드
+ * ========================================
+ */
+window.Card1 = {
+  card: null,
+  avatar: null,
+  container: null,
+  position: { x: 0.5, y: 0.08, targetX: 0.5, targetY: 0.08 },
+  isMoving: false,
+  isJustEntered: false,
+
+  init() {
+    this.card = Utils.$('#card-1');
+    this.avatar = Utils.$('#human-avatar');
+    this.container = Utils.$('#scatter-container');
     
-    if (wasFullscreen !== isCurrentlyFullscreen) {
-      isTransitioning = true;
+    if (!this.card || !this.avatar) return;
+
+    this.updatePosition();
+    this.bindEvents();
+    this.animate();
+  },
+
+  updatePosition() {
+    this.avatar.style.left = (this.position.x * 100) + '%';
+    this.avatar.style.top = (this.position.y * 100) + '%';
+    this.avatar.style.transform = 'translate(-50%, -50%)';
+  },
+
+  onEnterFullscreen() {
+    this.isJustEntered = true;
+  },
+
+  bindEvents() {
+    // fullscreen 상태에서만 클릭으로 이동
+    this.card.addEventListener('click', (e) => {
+      if (!this.card.classList.contains('fullscreen')) return;
+      if (e.target.closest('.close-btn') || e.target.closest('.card-btn')) return;
+
+      // 확대 직후 첫 클릭은 무시
+      if (this.isJustEntered) {
+        this.isJustEntered = false;
+        return;
+      }
+
+      const rect = this.card.getBoundingClientRect();
+      this.position.targetX = Utils.clamp((e.clientX - rect.left) / rect.width, 0.05, 0.95);
+      this.position.targetY = Utils.clamp((e.clientY - rect.top) / rect.height, 0.05, 0.95);
       
-      // 애니메이션 완료 후
-      setTimeout(() => {
-        isTransitioning = false;
-      }, 650);
-      
-      wasFullscreen = isCurrentlyFullscreen;
-    }
-    
-    requestAnimationFrame(checkFullscreenChange);
-  }
-  
-  // 클릭 시 이미지가 클릭 위치로 이동
-  card1.addEventListener('click', (e) => {
-    // fullscreen 상태에서만 작동
-    if (!card1.classList.contains('fullscreen')) return;
-    if (isTransitioning) return;
-    
-    // 닫기 버튼 클릭은 무시
-    if (e.target.closest('.close-button')) return;
-    
-    // 그리드 버튼 클릭은 무시
-    if (e.target.closest('.grid-button')) return;
-    
-    const rect = card1.getBoundingClientRect();
-    
-    // 클릭 위치를 비율로 계산
-    const newRatioX = (e.clientX - rect.left) / rect.width;
-    const newRatioY = (e.clientY - rect.top) / rect.height;
-    
-    // 부드러운 이동
-    startLerpToPosition(newRatioX, newRatioY);
-  });
-  
-  // Lerp 애니메이션 변수
-  let targetRatioX = ratioX;
-  let targetRatioY = ratioY;
-  let isLerping = false;
-  const lerpSpeed = 0.08; // lerp 속도 (0~1, 작을수록 부드러움)
-  
-  // Lerp로 부드럽게 이동
-  function startLerpToPosition(newTargetX, newTargetY) {
-    targetRatioX = newTargetX;
-    targetRatioY = newTargetY;
-    
-    if (!isLerping) {
-      isLerping = true;
-      lerpAnimation();
-    }
-  }
-  
-  function lerpAnimation() {
-    if (isTransitioning) {
-      isLerping = false;
-      return;
-    }
-    
-    // Lerp 계산
-    const diffX = targetRatioX - ratioX;
-    const diffY = targetRatioY - ratioY;
-    
-    // 목표에 거의 도달했으면 종료
-    if (Math.abs(diffX) < 0.001 && Math.abs(diffY) < 0.001) {
-      ratioX = targetRatioX;
-      ratioY = targetRatioY;
-      updateHumanPositionPercent();
-      isLerping = false;
-      return;
-    }
-    
-    // Lerp 적용
-    ratioX += diffX * lerpSpeed;
-    ratioY += diffY * lerpSpeed;
-    
-    updateHumanPositionPercent();
-    
-    // 그리드 충돌 감지 (전환 중이 아닐 때만)
-    if (card1.classList.contains('fullscreen') && !isTransitioning) {
-      checkGridCollision();
-    }
-    
-    requestAnimationFrame(lerpAnimation);
-  }
-  
-  // 그리드 아이템과 human의 충돌 감지
-  function checkGridCollision() {
-    if (isTransitioning) return;
-    
-    const humanRect = humanImage.getBoundingClientRect();
-    const humanCenterX = humanRect.left + humanRect.width / 2;
-    const humanCenterY = humanRect.top + humanRect.height / 2;
-    
-    gridItems.forEach(item => {
-      const itemRect = item.getBoundingClientRect();
-      
-      const isOverlapping = 
-        humanCenterX >= itemRect.left &&
-        humanCenterX <= itemRect.right &&
-        humanCenterY >= itemRect.top &&
-        humanCenterY <= itemRect.bottom;
-      
-      if (isOverlapping) {
-        item.classList.add('flipped');
+      if (!this.isMoving) {
+        this.isMoving = true;
       }
     });
-  }
-  
-  // 그리드 버튼 클릭 시 팝업 열기
-  gridItems.forEach((item, index) => {
-    const button = item.querySelector('.grid-button');
-    if (button) {
-      button.addEventListener('click', (e) => {
+
+    // Button clicks -> popup
+    this.container.addEventListener('click', (e) => {
+      const btn = e.target.closest('.card-btn');
+      if (btn) {
         e.stopPropagation();
-        openPopup(index);
-      });
-    }
-  });
-  
-  // 팝업 열기
-  function openPopup(index) {
-    const popupContent = document.getElementById('popup-content');
-    popupContent.querySelector('h2').textContent = `아이템 ${index + 1}`;
-    popupContent.querySelector('p').textContent = `이것은 ${index + 1}번 아이템의 상세 내용입니다.`;
-    popupOverlay.classList.add('active');
-  }
-  
-  // 팝업 닫기
-  if (popupClose) {
-    popupClose.addEventListener('click', () => {
-      popupOverlay.classList.remove('active');
-    });
-  }
-  
-  // 팝업 오버레이 클릭 시 닫기
-  if (popupOverlay) {
-    popupOverlay.addEventListener('click', (e) => {
-      if (e.target === popupOverlay) {
-        popupOverlay.classList.remove('active');
+        const item = btn.closest('.scatter-item');
+        const idx = item ? item.dataset.index : 0;
+        Popup.open('아이템 ' + (parseInt(idx) + 1), '상세 내용입니다.');
       }
     });
+  },
+
+  checkCollision() {
+    if (!this.card.classList.contains('fullscreen')) return;
+
+    const avatarRect = this.avatar.getBoundingClientRect();
+    this.container.querySelectorAll('.scatter-item:not(.flipped)').forEach(item => {
+      const inner = item.querySelector('.card-inner');
+      if (!inner) return;
+      
+      const itemRect = inner.getBoundingClientRect();
+      if (itemRect.width === 0) return;
+
+      const hit = !(avatarRect.right < itemRect.left || 
+                    avatarRect.left > itemRect.right || 
+                    avatarRect.bottom < itemRect.top || 
+                    avatarRect.top > itemRect.bottom);
+      
+      if (hit) item.classList.add('flipped');
+    });
+  },
+
+  animate() {
+    if (this.isMoving) {
+      const dx = this.position.targetX - this.position.x;
+      const dy = this.position.targetY - this.position.y;
+      
+      this.position.x += dx * 0.08;
+      this.position.y += dy * 0.08;
+      this.updatePosition();
+      this.checkCollision();
+
+      if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
+        this.position.x = this.position.targetX;
+        this.position.y = this.position.targetY;
+        this.isMoving = false;
+      }
+    }
+    requestAnimationFrame(() => this.animate());
   }
-  
-  // 카드1 닫을 때 - 그리드 상태 유지
-  window.resetCard1Grid = function() {
-    // 상태 유지 - 초기화하지 않음
-  };
-  
-  // 초기화
-  updateHumanPositionPercent();
-  checkFullscreenChange();
-})();
+};

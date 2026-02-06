@@ -1,423 +1,579 @@
-// Card 5 - Three.js 나선형 계단 (환부채꼴 모양)
-(function () {
-  var card5 = document.getElementById("card-5");
-  var container = document.getElementById("c5-container");
-  var progressEl = document.getElementById("c5-progress");
-  var particleContainer = document.getElementById("particle-container-5");
-  var videoPopup = document.getElementById("c5-video-popup");
-  var videoEl = document.getElementById("c5-video");
-  var videoClose = document.getElementById("c5-video-close");
+/**
+ * ========================================
+ * card5.js - Three.js 나선형 계단 (와이어프레임 스타일)
+ * ========================================
+ * 이미지 레퍼런스에 맞춘 건축 라인 드로잉 스타일
+ * 흰색 면 + 검정 윤곽선, 사선 구도의 나선형 계단
+ */
+window.Card5 = {
+  card: null,
+  container: null,
+  progressEl: null,
+  particleBox: null,
 
-  if (!card5 || !container || typeof THREE === "undefined") return;
+  // Three.js
+  scene: null,
+  camera: null,
+  renderer: null,
+  raycaster: null,
+  mouse: null,
+  frameMeshes: [],
+  stairGroup: null,
 
-  // === 파라미터 ===
-  var TOTAL_STAIRS = 30;
-  var STAIR_HEIGHT = 2.0;
-  var ANGLE_PER_STAIR = 25; // 각 계단이 차지하는 각도
-  var INNER_RADIUS = 1.0;   // 환부채꼴 안쪽 반지름
-  var OUTER_RADIUS = 7.0;   // 환부채꼴 바깥쪽 반지름
-  var STAIR_THICKNESS = 2.2; // 계단 두께 (높이)
-  var EYE_HEIGHT = 4.5;
+  // State
+  scroll: 0,
+  targetScroll: 0,
+  maxScroll: 100,
+  hasExploded: false,
+  isInitialized: false,
 
-  // 액자 (3층마다)
-  var FRAME_STAIRS = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27];
-  var VIDEOS = [
+  // Parameters — 레퍼런스 이미지에 맞춰 조정
+  TOTAL_STAIRS: 36,
+  STAIR_HEIGHT: 1.2,
+  ANGLE_PER_STAIR: 22,
+  INNER_RADIUS: 1.0,
+  OUTER_RADIUS: 4.8,
+  STAIR_THICKNESS: 0.28,
+  EYE_HEIGHT: 1.6,
+  FRAME_STAIRS: [5, 11, 17, 23, 29, 35],
+  VIDEOS: [
     "Video/vid1.mp4",
     "Video/vid2.mp4",
     "Video/vid3.mp4",
     "Video/vid4.mp4",
     "Video/vid5.mp4",
     "Video/vid6.mp4",
-  ];
+  ],
 
-  // Three.js
-  var scene, camera, renderer, raycaster, mouse;
-  var frameMeshes = [];
-  var frameVideoMap = {};
-  var scrollProgress = 0,
-    targetScrollProgress = 0;
-  var maxScroll = 100,
-    hasExploded = false,
-    explodeThreshold = 85;
-  var isInitialized = false;
-  var isMobile = window.innerWidth <= 768;
+  // Materials (shared)
+  whiteMat: null,
+  lineMat: null,
 
-  // === 환부채꼴 지오메트리 생성 ===
-  function createAnnularSectorGeometry(innerRadius, outerRadius, startAngle, endAngle, height) {
-    var shape = new THREE.Shape();
-    var segments = 12;
-    var angleSpan = endAngle - startAngle;
-    
-    // 바깥쪽 호 (시작점)
-    shape.moveTo(
-      Math.cos(startAngle) * outerRadius,
-      Math.sin(startAngle) * outerRadius
+  init() {
+    this.card = Utils.$("#card-5");
+    this.container = Utils.$("#three-container");
+    this.progressEl = Utils.$("#floor-indicator-5");
+    this.particleBox = Utils.$("#particle-box-5");
+
+    if (!this.card || !this.container || typeof THREE === "undefined") return;
+
+    // Watch for fullscreen / shrinking — 클래스 변경 시 반복 리사이즈
+    const observer = new MutationObserver(() => {
+      if (!this.isInitialized) return;
+      // CSS 전환 동안 여러 번 리사이즈하여 캔버스가 컨테이너를 정확히 채우도록
+      this.handleResize();
+      setTimeout(() => this.handleResize(), 50);
+      setTimeout(() => this.handleResize(), 150);
+      setTimeout(() => this.handleResize(), 350);
+      setTimeout(() => this.handleResize(), 600);
+      setTimeout(() => this.handleResize(), 1000);
+    });
+    observer.observe(this.card, {
+      attributes: true,
+      attributeFilter: ["class", "style"],
+    });
+
+    setTimeout(() => {
+      this.initThree();
+      this.handleResize();
+    }, 300);
+  },
+
+  initThree() {
+    if (this.isInitialized) return;
+    this.isInitialized = true;
+
+    const isMobile = window.innerWidth <= 768;
+
+    // Scene — 순백 배경, 포그 없음
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0xffffff);
+
+    // Camera
+    this.camera = new THREE.PerspectiveCamera(
+      isMobile ? 65 : 55,
+      1,
+      0.1,
+      300,
     );
-    
-    // 바깥쪽 호
-    for (var i = 1; i <= segments; i++) {
-      var angle = startAngle + (angleSpan * i) / segments;
-      shape.lineTo(
-        Math.cos(angle) * outerRadius,
-        Math.sin(angle) * outerRadius
-      );
+
+    // Renderer
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: false,
+    });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.container.appendChild(this.renderer.domElement);
+
+    this.raycaster = new THREE.Raycaster();
+    this.mouse = new THREE.Vector2();
+
+    // 공유 머티리얼
+    this.whiteMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      side: THREE.DoubleSide,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
+    });
+    this.lineMat = new THREE.LineBasicMaterial({
+      color: 0x1a1a1a,
+      linewidth: 1,
+    });
+
+    // Minimal ambient light (MeshBasicMaterial은 조명 불필요하나 프레임용)
+    this.scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+
+    // Stair group — 전체 계단을 그룹으로 관리
+    this.stairGroup = new THREE.Group();
+    this.scene.add(this.stairGroup);
+
+    this.createStairs();
+    this.createRailings();
+    this.setupCamera();
+    this.bindEvents();
+    this.handleResize();
+    this.animate();
+  },
+
+  /**
+   * 부채꼴 계단 형상 생성
+   */
+  createAnnularSector(innerR, outerR, startAng, endAng, height) {
+    const shape = new THREE.Shape();
+    const segments = 12;
+
+    const minAng = Math.min(startAng, endAng);
+    const maxAng = Math.max(startAng, endAng);
+    const span = maxAng - minAng;
+
+    shape.moveTo(Math.cos(minAng) * outerR, Math.sin(minAng) * outerR);
+    for (let i = 1; i <= segments; i++) {
+      const a = minAng + (span * i) / segments;
+      shape.lineTo(Math.cos(a) * outerR, Math.sin(a) * outerR);
     }
-    
-    // 안쪽 호로 연결
-    for (var i = segments; i >= 0; i--) {
-      var angle = startAngle + (angleSpan * i) / segments;
-      shape.lineTo(
-        Math.cos(angle) * innerRadius,
-        Math.sin(angle) * innerRadius
-      );
+    for (let i = segments; i >= 0; i--) {
+      const a = minAng + (span * i) / segments;
+      shape.lineTo(Math.cos(a) * innerR, Math.sin(a) * innerR);
     }
-    
     shape.closePath();
-    
-    // ExtrudeGeometry로 두께 생성
-    var extrudeSettings = {
+
+    const geo = new THREE.ExtrudeGeometry(shape, {
       depth: height,
-      bevelEnabled: false
-    };
-    
-    var geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    // XY 평면에서 XZ 평면으로 회전 (바닥에 놓이도록)
-    geometry.rotateX(-Math.PI / 2);
-    
-    return geometry;
-  }
+      bevelEnabled: false,
+    });
+    geo.rotateX(-Math.PI / 2);
+    return geo;
+  },
 
-  // === 초기화 ===
-  function initThree() {
-    if (isInitialized) return;
-    isInitialized = true;
+  /**
+   * 계단 생성 — 흰색 면 + 검정 윤곽선
+   */
+  createStairs() {
+    for (let i = 0; i < this.TOTAL_STAIRS; i++) {
+      const startAng = (i * this.ANGLE_PER_STAIR * Math.PI) / 180;
+      const endAng = ((i + 1) * this.ANGLE_PER_STAIR * Math.PI) / 180;
+      const y = i * this.STAIR_HEIGHT;
 
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xffffff);
-    scene.fog = new THREE.Fog(0xffffff, 20, 80);
-
-    camera = new THREE.PerspectiveCamera(isMobile ? 80 : 75, 1, 0.1, 150);
-
-    renderer = new THREE.WebGLRenderer({ antialias: !isMobile, alpha: false });
-    renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2)
-    );
-    container.appendChild(renderer.domElement);
-
-    raycaster = new THREE.Raycaster();
-    mouse = new THREE.Vector2();
-
-    // 조명
-    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-    var dirLight = new THREE.DirectionalLight(0xffffff, 0.4);
-    dirLight.position.set(10, 50, 10);
-    scene.add(dirLight);
-
-    createPillar();
-    createStairs();
-
-    handleResize();
-    animate();
-  }
-
-  // === 기둥 ===
-  function createPillar() {
-    var h = TOTAL_STAIRS * STAIR_HEIGHT + 15;
-    var geo = new THREE.CylinderGeometry(INNER_RADIUS * 0.8, INNER_RADIUS * 0.8, h, 16);
-    var mat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-    var mesh = new THREE.Mesh(geo, mat);
-    mesh.position.y = h / 2 - 2;
-    scene.add(mesh);
-  }
-
-  // === 계단 (환부채꼴) ===
-  function createStairs() {
-    var mat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-    var railGeo = new THREE.CylinderGeometry(0.1, 0.1, 2.0, 6);
-    var railMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
-
-    for (var i = 0; i < TOTAL_STAIRS; i++) {
-      // 계단 시작/끝 각도 (라디안)
-      var startAngle = (i * ANGLE_PER_STAIR * Math.PI) / 180;
-      var endAngle = ((i + 1) * ANGLE_PER_STAIR * Math.PI) / 180;
-      var midAngle = (startAngle + endAngle) / 2;
-      var y = i * STAIR_HEIGHT;
-
-      // 환부채꼴 계단 생성
-      var stairGeo = createAnnularSectorGeometry(
-        INNER_RADIUS,
-        OUTER_RADIUS,
-        startAngle,
-        endAngle,
-        STAIR_THICKNESS
+      const stairGeo = this.createAnnularSector(
+        this.INNER_RADIUS,
+        this.OUTER_RADIUS,
+        startAng,
+        endAng,
+        this.STAIR_THICKNESS,
       );
-      var stair = new THREE.Mesh(stairGeo, mat);
+
+      // 흰색 면
+      const stair = new THREE.Mesh(stairGeo, this.whiteMat);
       stair.position.y = y;
-      scene.add(stair);
+      this.stairGroup.add(stair);
 
-      // 난간 (바깥쪽 끝)
-      var railX = Math.cos(midAngle) * (OUTER_RADIUS - 0.3);
-      var railZ = Math.sin(midAngle) * (OUTER_RADIUS - 0.3);
-      var rail = new THREE.Mesh(railGeo, railMat);
-      rail.position.set(railX, y + STAIR_THICKNESS + 1.0, railZ);
-      scene.add(rail);
+      // 검정 윤곽선
+      const edges = new THREE.EdgesGeometry(stairGeo, 20);
+      const lineSegments = new THREE.LineSegments(edges, this.lineMat);
+      lineSegments.position.y = y;
+      this.stairGroup.add(lineSegments);
 
-      // 액자 (3층마다)
-      if (FRAME_STAIRS.indexOf(i) !== -1) {
-        createFrame(midAngle, y, i);
+      // 수직면 (라이저) — 계단 앞면 표현
+      if (i > 0) {
+        this.createRiser(startAng, y, i);
+      }
+
+      // 프레임 배치
+      if (this.FRAME_STAIRS.includes(i)) {
+        this.createFrame((startAng + endAng) / 2, y, i);
       }
     }
-  }
+  },
 
-  // === 액자 ===
-  function createFrame(angle, y, stairIndex) {
-    var group = new THREE.Group();
-    var videoSrc = VIDEOS[stairIndex % VIDEOS.length];
+  /**
+   * 계단 수직면 (라이저) 생성
+   */
+  createRiser(angle, y, stairIndex) {
+    const prevY = (stairIndex - 1) * this.STAIR_HEIGHT + this.STAIR_THICKNESS;
+    const riserHeight = y - prevY;
+    if (riserHeight <= 0) return;
 
-    // 프레임
-    var outerGeo = new THREE.BoxGeometry(1.4, 1.1, 0.12);
-    group.add(
-      new THREE.Mesh(
-        outerGeo,
-        new THREE.MeshBasicMaterial({ color: 0x111111 })
-      )
+    const angRad = angle;
+    const angNext = angle + (this.ANGLE_PER_STAIR * Math.PI) / 180;
+    const segments = 8;
+    const span = angNext - angRad;
+
+    // 외벽 라이저 (바깥쪽 아크)
+    const points = [];
+    for (let i = 0; i <= segments; i++) {
+      const a = angRad + (span * i) / segments;
+      points.push(
+        new THREE.Vector3(
+          Math.cos(a) * this.OUTER_RADIUS,
+          prevY,
+          Math.sin(a) * this.OUTER_RADIUS,
+        ),
+      );
+    }
+    for (let i = segments; i >= 0; i--) {
+      const a = angRad + (span * i) / segments;
+      points.push(
+        new THREE.Vector3(
+          Math.cos(a) * this.OUTER_RADIUS,
+          y,
+          Math.sin(a) * this.OUTER_RADIUS,
+        ),
+      );
+    }
+
+    // 라인으로 라이저 표현
+    const lineGeo = new THREE.BufferGeometry().setFromPoints([
+      // 아래쪽 호
+      ...(() => {
+        const pts = [];
+        for (let i = 0; i <= segments; i++) {
+          const a = angRad + (span * i) / segments;
+          pts.push(
+            new THREE.Vector3(
+              Math.cos(a) * this.OUTER_RADIUS,
+              prevY,
+              Math.sin(a) * this.OUTER_RADIUS,
+            ),
+          );
+        }
+        return pts;
+      })(),
+    ]);
+
+    // 수직 라인 (양끝)
+    const vLine1Geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(
+        Math.cos(angRad) * this.OUTER_RADIUS,
+        prevY,
+        Math.sin(angRad) * this.OUTER_RADIUS,
+      ),
+      new THREE.Vector3(
+        Math.cos(angRad) * this.OUTER_RADIUS,
+        y,
+        Math.sin(angRad) * this.OUTER_RADIUS,
+      ),
+    ]);
+    this.stairGroup.add(new THREE.Line(vLine1Geo, this.lineMat));
+
+    // 내벽 수직 라인
+    const vLine2Geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(
+        Math.cos(angRad) * this.INNER_RADIUS,
+        prevY,
+        Math.sin(angRad) * this.INNER_RADIUS,
+      ),
+      new THREE.Vector3(
+        Math.cos(angRad) * this.INNER_RADIUS,
+        y,
+        Math.sin(angRad) * this.INNER_RADIUS,
+      ),
+    ]);
+    this.stairGroup.add(new THREE.Line(vLine2Geo, this.lineMat));
+  },
+
+  /**
+   * 난간 라인 생성 — 바깥쪽 나선 라인
+   */
+  createRailings() {
+    const outerPoints = [];
+    const innerPoints = [];
+    const railHeight = 1.0;
+
+    for (let i = 0; i <= this.TOTAL_STAIRS; i++) {
+      const ang = (i * this.ANGLE_PER_STAIR * Math.PI) / 180;
+      const y = i * this.STAIR_HEIGHT + railHeight;
+
+      outerPoints.push(
+        new THREE.Vector3(
+          Math.cos(ang) * this.OUTER_RADIUS,
+          y,
+          Math.sin(ang) * this.OUTER_RADIUS,
+        ),
+      );
+      innerPoints.push(
+        new THREE.Vector3(
+          Math.cos(ang) * this.INNER_RADIUS,
+          y,
+          Math.sin(ang) * this.INNER_RADIUS,
+        ),
+      );
+    }
+
+    // 바깥쪽 난간
+    const outerCurve = new THREE.CatmullRomCurve3(outerPoints);
+    const outerGeo = new THREE.BufferGeometry().setFromPoints(
+      outerCurve.getPoints(this.TOTAL_STAIRS * 4),
     );
+    const outerRail = new THREE.Line(
+      outerGeo,
+      new THREE.LineBasicMaterial({ color: 0x333333, linewidth: 1 }),
+    );
+    this.stairGroup.add(outerRail);
 
-    var innerGeo = new THREE.BoxGeometry(1.2, 0.9, 0.13);
-    var innerMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    var inner = new THREE.Mesh(innerGeo, innerMat);
-    inner.position.z = 0.01;
+    // 난간 지지대 (수직)
+    for (let i = 0; i <= this.TOTAL_STAIRS; i += 2) {
+      const ang = (i * this.ANGLE_PER_STAIR * Math.PI) / 180;
+      const baseY = i * this.STAIR_HEIGHT + this.STAIR_THICKNESS;
+      const topY = i * this.STAIR_HEIGHT + railHeight;
+
+      const supportGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(
+          Math.cos(ang) * this.OUTER_RADIUS,
+          baseY,
+          Math.sin(ang) * this.OUTER_RADIUS,
+        ),
+        new THREE.Vector3(
+          Math.cos(ang) * this.OUTER_RADIUS,
+          topY,
+          Math.sin(ang) * this.OUTER_RADIUS,
+        ),
+      ]);
+      this.stairGroup.add(
+        new THREE.Line(
+          supportGeo,
+          new THREE.LineBasicMaterial({ color: 0x555555 }),
+        ),
+      );
+    }
+  },
+
+  /**
+   * 프레임 (액자) — 와이어프레임 스타일
+   */
+  createFrame(angle, y, stairIndex) {
+    const group = new THREE.Group();
+    const videoSrc = this.VIDEOS[stairIndex % this.VIDEOS.length];
+
+    // 외부 프레임 — 윤곽선만
+    const outerGeo = new THREE.BoxGeometry(1.6, 1.2, 0.08);
+    const outerMesh = new THREE.Mesh(outerGeo, this.whiteMat);
+    const outerEdges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(outerGeo),
+      new THREE.LineBasicMaterial({ color: 0x000000 }),
+    );
+    group.add(outerMesh);
+    group.add(outerEdges);
+
+    // 내부 (클릭 가능)
+    const innerGeo = new THREE.BoxGeometry(1.3, 0.95, 0.1);
+    const inner = new THREE.Mesh(
+      innerGeo,
+      new THREE.MeshBasicMaterial({ color: 0xf0f0f0 }),
+    );
+    inner.position.z = 0.02;
+    inner.userData.videoSrc = videoSrc;
     group.add(inner);
 
+    const innerEdges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(innerGeo),
+      new THREE.LineBasicMaterial({ color: 0x999999 }),
+    );
+    innerEdges.position.z = 0.02;
+    group.add(innerEdges);
+
     // 재생 아이콘
-    var tri = new THREE.Shape();
+    const tri = new THREE.Shape();
     tri.moveTo(-0.12, -0.15);
     tri.lineTo(-0.12, 0.15);
     tri.lineTo(0.15, 0);
-    tri.lineTo(-0.12, -0.15);
-    var triMesh = new THREE.Mesh(
+    tri.closePath();
+    const triMesh = new THREE.Mesh(
       new THREE.ShapeGeometry(tri),
-      new THREE.MeshBasicMaterial({ color: 0x222222 })
+      new THREE.MeshBasicMaterial({ color: 0x1a1a1a }),
     );
-    triMesh.position.z = 0.08;
+    triMesh.position.z = 0.07;
     group.add(triMesh);
 
-    // 위치: 계단 바깥쪽, 눈높이
-    var frameRadius = OUTER_RADIUS + 0.8;
+    // 위치: 바깥벽
+    const frameR = this.OUTER_RADIUS + 0.6;
     group.position.set(
-      Math.cos(angle) * frameRadius,
-      y + EYE_HEIGHT,
-      Math.sin(angle) * frameRadius
+      Math.cos(angle) * frameR,
+      y + this.EYE_HEIGHT + 0.3,
+      Math.sin(angle) * frameR,
     );
-    // 액자가 중심을 향하도록 회전
-    group.rotation.y = -angle + Math.PI / 2;
-    scene.add(group);
+    group.rotation.y = -angle + Math.PI;
+    this.stairGroup.add(group);
+    this.frameMeshes.push(inner);
+  },
 
-    inner.userData.videoSrc = videoSrc;
-    frameMeshes.push(inner);
-    frameVideoMap[inner.uuid] = videoSrc;
-  }
-
-  // === 카메라 ===
-  function updateCamera() {
-    var t = scrollProgress / maxScroll;
-    var idx = t * TOTAL_STAIRS;
-    var h = idx * STAIR_HEIGHT;
-    var ang = (idx * ANGLE_PER_STAIR * Math.PI) / 180;
-
-    // 위치: 계단 중간 반지름, 오른쪽으로 이동
-    var camRadius = (INNER_RADIUS + OUTER_RADIUS) / 2 + 2.0;
-    var camX = Math.cos(ang) * camRadius;
-    var camZ = Math.sin(ang) * camRadius;
-    camera.position.set(camX, h + 21, camZ);
-
-    // 시선: 앞 계단
-    var lookIdx = idx + 3;
-    var lookAng = (lookIdx * ANGLE_PER_STAIR * Math.PI) / 180;
-    var lookH = lookIdx * STAIR_HEIGHT;
-    var lookRadius = (INNER_RADIUS + OUTER_RADIUS) / 2;
-    camera.lookAt(
-      Math.cos(lookAng) * lookRadius,
-      lookH + 1,
-      Math.sin(lookAng) * lookRadius
+  /**
+   * 초기 카메라 설정 — 아래에서 올려다보는 사선 구도
+   */
+  setupCamera() {
+    // 계단 가까이, 낮은 위치에서 45° 대각선으로 올려다봄
+    const ang = Math.PI * 0.25;
+    const dist = 10;
+    this.camera.position.set(
+      Math.cos(ang) * dist,
+      2,
+      Math.sin(ang) * dist,
     );
+    this.camera.lookAt(0, 14, 0);
+  },
 
-    if (progressEl) progressEl.textContent = Math.floor(idx) + 1 + "F";
+  updateCamera() {
+    const progress = this.scroll / this.maxScroll;
+    const totalH = this.TOTAL_STAIRS * this.STAIR_HEIGHT;
 
-    // 파티클
-    if (scrollProgress >= explodeThreshold && !hasExploded) {
-      hasExploded = true;
-      createParticles();
+    // 가까운 거리에서 올려다보며, 스크롤에 따라 계단을 따라 상승
+    const baseAngle = Math.PI * 0.25;
+    const camAngle = baseAngle + progress * Math.PI * 1.5;
+    const camDist = 10 + progress * 2;         // 가까운 거리 유지
+    const camHeight = 2 + progress * totalH * 0.6;  // 낮은 곳에서 시작
+    const lookHeight = camHeight + 12 + progress * 6; // 항상 위를 바라봄
+
+    this.camera.position.set(
+      Math.cos(camAngle) * camDist,
+      camHeight,
+      Math.sin(camAngle) * camDist,
+    );
+    this.camera.lookAt(0, lookHeight, 0);
+
+    // 진행률 표시
+    if (this.progressEl) {
+      const floor = Math.floor(progress * this.TOTAL_STAIRS);
+      this.progressEl.textContent = `${floor}F`;
     }
-    if (scrollProgress < explodeThreshold - 10) hasExploded = false;
-  }
 
-  // === 파티클 ===
-  function createParticles() {
-    if (!particleContainer) return;
-    var colors = ["#000", "#333", "#666", "#999", "#ccc"];
-    for (var i = 0; i < 60; i++) {
-      var p = document.createElement("div");
+    // Particles
+    if (this.scroll >= 85 && !this.hasExploded) {
+      this.hasExploded = true;
+      this.createParticles();
+    }
+    if (this.scroll < 75) this.hasExploded = false;
+  },
+
+  createParticles() {
+    if (!this.particleBox) return;
+    const colors = ["#111", "#333", "#555", "#777", "#999"];
+    for (let i = 0; i < 80; i++) {
+      const p = document.createElement("div");
       p.className = "particle";
-      var size = Math.random() * 10 + 4;
-      var color = colors[Math.floor(Math.random() * colors.length)];
-      var cx = window.innerWidth / 2,
-        cy = window.innerHeight * 0.3;
-      var a = Math.random() * Math.PI * 2;
-      var d = Math.random() * 300 + 60;
-      p.style.cssText =
-        "width:" + size + "px;height:" + size + "px;background:" + color +
-        ";left:" + cx + "px;top:" + cy + "px;--tx:" + Math.cos(a) * d +
-        "px;--ty:" + Math.sin(a) * d + "px";
-      particleContainer.appendChild(p);
-      setTimeout(function (el) { el.remove(); }, 1200, p);
+      const size = Math.random() * 12 + 4;
+      const cx = window.innerWidth / 2,
+        cy = window.innerHeight * 0.4;
+      const a = Math.random() * Math.PI * 2;
+      const d = Math.random() * 400 + 80;
+      p.style.cssText = `width:${size}px;height:${size}px;background:${colors[Math.floor(Math.random() * colors.length)]};left:${cx}px;top:${cy}px;--tx:${Math.cos(a) * d}px;--ty:${Math.sin(a) * d}px`;
+      this.particleBox.appendChild(p);
+      setTimeout(() => p.remove(), 1500);
     }
-  }
+  },
 
-  // === 애니메이션 ===
-  function animate() {
-    requestAnimationFrame(animate);
+  bindEvents() {
+    // Wheel
+    this.card.addEventListener(
+      "wheel",
+      (e) => {
+        if (!this.card.classList.contains("fullscreen")) return;
+        e.preventDefault();
+        this.targetScroll = Utils.clamp(
+          this.targetScroll + (e.deltaY > 0 ? 2.5 : -2.5),
+          0,
+          this.maxScroll,
+        );
+      },
+      { passive: false },
+    );
 
-    var diff = targetScrollProgress - scrollProgress;
-    if (Math.abs(diff) > 0.005) {
-      var t = Math.min(Math.abs(diff) / 50, 1);
-      var ease = 1 - Math.pow(t, 2);
-      scrollProgress += diff * (0.01 + ease * 0.02);
+    // Touch
+    let touchY = 0;
+    this.card.addEventListener(
+      "touchstart",
+      (e) => {
+        if (this.card.classList.contains("fullscreen"))
+          touchY = e.touches[0].clientY;
+      },
+      { passive: true },
+    );
+    this.card.addEventListener(
+      "touchmove",
+      (e) => {
+        if (!this.card.classList.contains("fullscreen")) return;
+        const dy = touchY - e.touches[0].clientY;
+        touchY = e.touches[0].clientY;
+        this.targetScroll = Utils.clamp(
+          this.targetScroll + dy * 0.3,
+          0,
+          this.maxScroll,
+        );
+      },
+      { passive: true },
+    );
+
+    // Click frames
+    this.container.addEventListener("click", (e) => {
+      if (!this.card.classList.contains("fullscreen")) return;
+      const rect = this.renderer.domElement.getBoundingClientRect();
+      this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      this.raycaster.setFromCamera(this.mouse, this.camera);
+      const hits = this.raycaster.intersectObjects(this.frameMeshes);
+      if (hits.length > 0 && hits[0].object.userData.videoSrc) {
+        VideoPopup.open(hits[0].object.userData.videoSrc);
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      if (this.isInitialized) this.handleResize();
+    });
+  },
+
+  handleResize() {
+    if (!this.renderer || !this.container) return;
+    
+    // getBoundingClientRect가 전환 중에도 정확한 크기를 반환
+    const rect = this.container.getBoundingClientRect();
+    const w = Math.round(rect.width) || 1;
+    const h = Math.round(rect.height) || 1;
+    
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(w, h, false);
+    
+    // 캔버스가 컨테이너를 정확히 채우도록 스타일 강제
+    const canvas = this.renderer.domElement;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.display = 'block';
+  },
+
+  animate() {
+    requestAnimationFrame(() => this.animate());
+
+    const diff = this.targetScroll - this.scroll;
+    if (Math.abs(diff) > 0.01) {
+      this.scroll += diff * 0.07;
     } else {
-      scrollProgress = targetScrollProgress;
+      this.scroll = this.targetScroll;
     }
 
-    updateCamera();
-    renderer.render(scene, camera);
-  }
+    this.updateCamera();
+    this.renderer.render(this.scene, this.camera);
+  },
 
-  // === 리사이즈 ===
-  function handleResize() {
-    var w = container.clientWidth || 1;
-    var h = container.clientHeight || 1;
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    renderer.setSize(w, h, false);
-    isMobile = window.innerWidth <= 768;
-  }
-  window.addEventListener("resize", function () {
-    if (isInitialized) handleResize();
-  });
-
-  // === 비디오 ===
-  function openVideo(src) {
-    if (videoEl && src) {
-      videoEl.src = src;
-      videoPopup.classList.add("active");
-      videoEl.play();
-    }
-  }
-  function closeVideo() {
-    videoPopup.classList.remove("active");
-    if (videoEl) {
-      videoEl.pause();
-      videoEl.src = "";
-    }
-  }
-  if (videoClose) videoClose.onclick = closeVideo;
-  if (videoPopup)
-    videoPopup.onclick = function (e) {
-      if (e.target === videoPopup) closeVideo();
-    };
-
-  // === 클릭 ===
-  container.addEventListener("click", function (e) {
-    if (
-      !card5.classList.contains("fullscreen") ||
-      videoPopup.classList.contains("active")
-    )
-      return;
-    var rect = renderer.domElement.getBoundingClientRect();
-    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
-    var hits = raycaster.intersectObjects(frameMeshes);
-    if (hits.length > 0) {
-      var src =
-        hits[0].object.userData.videoSrc || frameVideoMap[hits[0].object.uuid];
-      if (src) openVideo(src);
-    }
-  });
-
-  // === 휠 ===
-  card5.addEventListener(
-    "wheel",
-    function (e) {
-      if (
-        !card5.classList.contains("fullscreen") ||
-        videoPopup.classList.contains("active")
-      )
-        return;
-      e.preventDefault();
-      var delta = e.deltaY > 0 ? 1.5 : -1.5;
-      targetScrollProgress = Math.max(
-        0,
-        Math.min(maxScroll, targetScrollProgress + delta)
-      );
-    },
-    { passive: false }
-  );
-
-  // === 터치 ===
-  var touchY = 0;
-  card5.addEventListener(
-    "touchstart",
-    function (e) {
-      if (
-        !card5.classList.contains("fullscreen") ||
-        videoPopup.classList.contains("active")
-      )
-        return;
-      touchY = e.touches[0].clientY;
-    },
-    { passive: true }
-  );
-  card5.addEventListener(
-    "touchmove",
-    function (e) {
-      if (
-        !card5.classList.contains("fullscreen") ||
-        videoPopup.classList.contains("active")
-      )
-        return;
-      var dy = touchY - e.touches[0].clientY;
-      touchY = e.touches[0].clientY;
-      targetScrollProgress = Math.max(
-        0,
-        Math.min(maxScroll, targetScrollProgress + dy * 0.2)
-      );
-    },
-    { passive: true }
-  );
-
-  // === ESC ===
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && videoPopup.classList.contains("active"))
-      closeVideo();
-  });
-
-  // === 초기화 트리거 ===
-  var observer = new MutationObserver(function () {
-    if (card5.classList.contains("fullscreen")) {
-      if (!isInitialized) initThree();
-      setTimeout(handleResize, 100);
-    }
-  });
-  observer.observe(card5, { attributes: true, attributeFilter: ["class"] });
-
-  setTimeout(function () {
-    initThree();
-    handleResize();
-  }, 300);
-
-  window.initCard5 = function () {
-    scrollProgress = targetScrollProgress = 0;
-    hasExploded = false;
-  };
-  window.stopCard5Video = closeVideo;
-})();
+  closeVideo() {
+    VideoPopup.close();
+  },
+};

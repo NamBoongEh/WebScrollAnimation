@@ -1,499 +1,427 @@
-const cards = Array.from(document.querySelectorAll(".card"));
-const indicator = document.querySelector(".indicator");
-const closeButtons = document.querySelectorAll(".close-button");
-const cardStack = document.querySelector(".card-stack");
+/**
+ * ========================================
+ * script.js - Main Page Controller
+ * ========================================
+ * 카드 스택 네비게이션, 풀스크린, 패럴랙스, 팝업 관리
+ */
 
-let current = 0;
-let isAnimating = false;
-let isFullscreen = false;
+// ========================================
+// Utils (전역 공유 - card*.js에서도 접근)
+// ========================================
+var Utils = {
+  $(selector) { return document.querySelector(selector); },
+  $$(selector) { return document.querySelectorAll(selector); },
+  lerp(start, end, factor) { return start + (end - start) * factor; },
+  clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+};
 
-// 마우스 추적
-let mouseX = 0,
-  mouseY = 0;
-let currentMouseX = 0,
-  currentMouseY = 0;
+// ========================================
+// Popup
+// ========================================
+var Popup = {
+  overlay: null,
+  title: null,
+  desc: null,
 
-// 스크롤 관련
-let scrollAccumulator = 0;
-const scrollThreshold = 500;
-let wheelTimeout = null;
-let currentScrollY = 0,
-  targetScrollY = 0;
-let currentScrollZ = 0,
-  targetScrollZ = 0;
-let currentScrollAmount = 0,
-  targetScrollAmount = 0;
-let currentScrollDirection = 0,
-  targetScrollDirection = 0;
-let currentTilt = 0,
-  targetTilt = 0;
+  init() {
+    this.overlay = Utils.$('#popup-overlay');
+    this.title = Utils.$('#popup-title');
+    this.desc = Utils.$('#popup-desc');
 
-// 인디케이터 생성
-function createIndicator() {
-  indicator.innerHTML = "";
-  cards.forEach((_, i) => {
-    const dot = document.createElement("span");
-    dot.className = "dot" + (i === current ? " active" : "");
-    dot.addEventListener("click", () => navigateToCard(i));
-    indicator.appendChild(dot);
-  });
-}
-
-// 카드 위치 업데이트 (애니메이션 없이 즉시)
-function updateCardPositions() {
-  cards.forEach((card, i) => {
-    card.className = "card";
-    card.style.transform = "";
-    card.style.opacity = "1";
-    card.style.visibility = "";
-    card.style.filter = "";
-    card.style.zIndex = "";
-
-    const diff = i - current;
-
-    if (diff === 0) {
-      card.classList.add("active");
-    } else if (diff === -1) {
-      card.classList.add("prev-1");
-    } else if (diff <= -2) {
-      card.classList.add("prev-2");
-    } else {
-      card.classList.add("next-hidden");
-    }
-  });
-
-  indicator.querySelectorAll(".dot").forEach((dot, i) => {
-    dot.classList.toggle("active", i === current);
-  });
-}
-
-// 스크롤 변수 부드럽게 리셋 (target만 0으로 - current는 lerp로 자연스럽게 따라감)
-function smoothResetScrollVars() {
-  scrollAccumulator = 0;
-  targetScrollY = 0;
-  targetScrollZ = 0;
-  targetScrollAmount = 0;
-  targetScrollDirection = 0;
-  targetTilt = 0;
-  // current 값들은 건드리지 않음 - animateCardParallax의 lerp가 부드럽게 0으로 수렴시킴
-}
-
-// 스크롤 변수 즉시 리셋 (카드 전환 완료 후)
-function resetScrollVars() {
-  scrollAccumulator = 0;
-  targetScrollY = targetScrollZ = targetScrollAmount = targetScrollDirection = targetTilt = 0;
-  currentScrollY = currentScrollZ = currentScrollAmount = currentScrollDirection = currentTilt = 0;
-}
-
-// 전체화면 진입
-function enterFullscreen(card) {
-  isFullscreen = true;
-  card.style.transform = "";
-
-  const rect = card.getBoundingClientRect();
-  document.body.appendChild(card);
-
-  Object.assign(card.style, {
-    position: "fixed",
-    top: rect.top + "px",
-    left: rect.left + "px",
-    width: rect.width + "px",
-    height: rect.height + "px",
-    transition: "none",
-  });
-
-  card.offsetHeight; // reflow
-
-  Object.assign(card.style, {
-    transition: "all 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
-    top: "0",
-    left: "0",
-    width: "100vw",
-    height: "100vh",
-    borderRadius: "0",
-  });
-  card.classList.add("fullscreen");
-
-  document.body.style.overflow = "hidden";
-  history.pushState({ fullscreen: true }, "");
-
-  if (card.id === "card-2" && window.resumeCard2Videos) {
-    setTimeout(window.resumeCard2Videos, 600);
-  }
-}
-
-// 전체화면 해제
-function exitFullscreen() {
-  const activeCard = cards[current];
-  const stackRect = cardStack.getBoundingClientRect();
-
-  window.pauseAllCard2Videos?.();
-  window.stopCard3Video?.();
-  window.stopCard5Video?.();
-  window.resetCard1Grid?.();
-
-  activeCard.classList.add("shrinking");
-
-  Object.assign(activeCard.style, {
-    transition: "all 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
-    top: stackRect.top + "px",
-    left: stackRect.left + "px",
-    width: stackRect.width + "px",
-    height: stackRect.height + "px",
-    borderRadius: "24px",
-  });
-
-  setTimeout(() => {
-    activeCard.classList.remove("fullscreen", "shrinking");
-    Object.assign(activeCard.style, {
-      position: "",
-      top: "",
-      left: "",
-      width: "",
-      height: "",
-      borderRadius: "",
-      transition: "",
+    Utils.$('#popup-close')?.addEventListener('click', () => this.close());
+    this.overlay?.addEventListener('click', (e) => {
+      if (e.target === this.overlay) this.close();
     });
+  },
 
-    cardStack.appendChild(activeCard);
-    isFullscreen = false;
-    document.body.style.overflow = "";
-    updateCardPositions();
-  }, 600);
-}
+  open(title, desc) {
+    if (this.title) this.title.textContent = title;
+    if (this.desc) this.desc.textContent = desc;
+    this.overlay?.classList.add('active');
+  },
 
-// 카드 클릭 이벤트
-cards.forEach((card, index) => {
-  card.addEventListener("click", (e) => {
-    if (index === current && !isFullscreen && !isAnimating) {
-      e.stopPropagation();
-      enterFullscreen(card);
-    }
-  });
-});
-
-// 닫기 버튼
-closeButtons.forEach((btn) => {
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (isFullscreen) history.back();
-  });
-});
-
-// 브라우저 뒤로가기
-window.addEventListener("popstate", () => {
-  if (isFullscreen) exitFullscreen();
-});
-
-// 네비게이션 (현재 위치에서 이어서 애니메이션)
-function navigateToCard(nextIndex) {
-  if (
-    isAnimating ||
-    nextIndex < 0 ||
-    nextIndex >= cards.length ||
-    nextIndex === current ||
-    isFullscreen
-  ) {
-    return;
+  close() {
+    this.overlay?.classList.remove('active');
   }
+};
 
-  isAnimating = true;
-  const direction = nextIndex > current ? "down" : "up";
-  const oldCurrent = current;
-  current = nextIndex;
+// ========================================
+// Video Popup
+// ========================================
+var VideoPopup = {
+  popup: null,
+  video: null,
 
-  const oldCard = cards[oldCurrent];
-  const newCard = cards[current];
-  const prevOfNew = cards[current - 1];
-  const prevOfOld = cards[oldCurrent - 1];
+  init() {
+    this.popup = Utils.$('#video-popup');
+    this.video = Utils.$('#popup-video');
 
-  if (direction === "down") {
-    // 아래로 스크롤: 현재 카드 → prev-1 위치로
-    oldCard.style.transition = "all 1s cubic-bezier(0.4, 0, 0.2, 1)";
-    oldCard.style.transform = "translateZ(-100px) translateY(60%) scale(0.5)";
-    oldCard.style.filter = "brightness(0.9)";
-    oldCard.style.zIndex = "5";
-
-    // 새 카드가 아래에서 올라옴 (z-index 높게)
-    newCard.style.visibility = "visible";
-    newCard.style.transition = "all 1s cubic-bezier(0.4, 0, 0.2, 1)";
-    newCard.style.transform = "translateZ(0) translateY(0) scale(1)";
-    newCard.style.zIndex = "15";
-    newCard.classList.add("active");
-
-    // 이전 카드(prev-1)가 더 뒤로
-    if (prevOfOld) {
-      prevOfOld.style.transition = "all 1s cubic-bezier(0.4, 0, 0.2, 1)";
-      prevOfOld.style.transform =
-        "translateZ(-200px) translateY(70%) scale(0.4)";
-      prevOfOld.style.visibility = "hidden";
-    }
-  } else {
-    // 위로 스크롤: 현재 카드 → 아래로 사라짐
-    oldCard.style.transition = "all 1s cubic-bezier(0.4, 0, 0.2, 1)";
-    oldCard.style.transform =
-      "translateZ(150px) translateY(120%) rotateX(-50deg) scale(1)";
-    oldCard.style.visibility = "hidden";
-    oldCard.style.zIndex = "10";
-
-    // 새 카드(이전 카드)가 올라옴
-    newCard.style.visibility = "visible";
-    newCard.style.transition = "all 1s cubic-bezier(0.4, 0, 0.2, 1)";
-    newCard.style.transform = "translateZ(0) translateY(0) scale(1)";
-    newCard.style.filter = "brightness(1)";
-    newCard.style.zIndex = "5";
-    newCard.classList.add("active");
-
-    // 그 이전 카드가 prev-1 위치로
-    if (prevOfNew) {
-      prevOfNew.style.visibility = "visible";
-      prevOfNew.style.transition = "all 1s cubic-bezier(0.4, 0, 0.2, 1)";
-      prevOfNew.style.transform =
-        "translateZ(-100px) translateY(60%) scale(0.5)";
-      prevOfNew.style.filter = "brightness(0.9)";
-    }
-  }
-
-  setTimeout(() => {
-    // 트랜지션 제거하고 클래스 기반으로 전환, 스크롤 변수도 리셋
-    cards.forEach((card) => {
-      card.style.transition = "";
-      card.style.transform = "";
-      card.style.filter = "";
-      card.style.zIndex = "";
-      card.style.visibility = "";
+    Utils.$('#video-close')?.addEventListener('click', () => this.close());
+    this.popup?.addEventListener('click', (e) => {
+      if (e.target === this.popup) this.close();
     });
-    resetScrollVars();
-    updateCardPositions();
-    updateTitle();
-    isAnimating = false;
-  }, 1000);
-}
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') this.close();
+    });
+  },
 
-// 키보드 네비게이션
-document.addEventListener("keydown", (e) => {
-  if (e.key === "ArrowDown") {
-    e.preventDefault();
-    navigateToCard(current + 1);
-  } else if (e.key === "ArrowUp") {
-    e.preventDefault();
-    navigateToCard(current - 1);
+  open(src) {
+    if (this.video) {
+      this.video.src = src;
+      this.popup?.classList.add('active');
+      this.video.play();
+    }
+  },
+
+  close() {
+    this.popup?.classList.remove('active');
+    if (this.video) {
+      this.video.pause();
+      this.video.src = '';
+    }
   }
-});
+};
 
-// 휠 이벤트
-document.addEventListener(
-  "wheel",
-  (e) => {
-    e.preventDefault();
-
-    if (isAnimating || isFullscreen) return;
-
-    scrollAccumulator += e.deltaY * 0.5;
-
-    const absScroll = Math.abs(scrollAccumulator);
-    const progress = absScroll / scrollThreshold;
-
-    if (scrollAccumulator > 0) {
-      // 아래로 스크롤 (deltaY 양수)
-      targetScrollY = absScroll * 0.6;
-      targetScrollZ = -absScroll * 2;
-      targetTilt = 0;
-    } else {
-      // 위로 스크롤 (deltaY 음수)
-      targetScrollY = absScroll * 0.6;
-      targetScrollZ = absScroll * 2;
-      targetTilt = -15 * progress; // 0에서 -15도로 기울어짐
-    }
-
-    targetScrollAmount = progress;
-    targetScrollDirection = scrollAccumulator;
-
-    if (wheelTimeout) clearTimeout(wheelTimeout);
-
-    // 임계점 체크
-    if (absScroll > scrollThreshold) {
-      const dir = scrollAccumulator > 0 ? 1 : -1;
-      scrollAccumulator = 0;
-      targetScrollAmount = targetScrollDirection = 0;
-      navigateToCard(current + dir);
-    } else {
-      // 부드러운 리셋: target만 0으로 설정, current는 lerp로 자연스럽게 복귀
-      wheelTimeout = setTimeout(() => {
-        smoothResetScrollVars();
-      }, 1000);
-    }
-  },
-  { passive: false },
-);
-
-// 터치 이벤트
-let touchStartY = 0,
-  touchEndY = 0;
-let touchStartX = 0,
-  touchEndX = 0;
-
-document.addEventListener(
-  "touchstart",
-  (e) => {
-    touchStartY = e.touches[0].clientY;
-    touchStartX = e.touches[0].clientX;
-  },
-  { passive: true },
-);
-
-document.addEventListener(
-  "touchmove",
-  (e) => {
-    if (!isFullscreen) {
-      touchEndY = e.touches[0].clientY;
-      touchEndX = e.touches[0].clientX;
-    }
-  },
-  { passive: true },
-);
-
-document.addEventListener(
-  "touchend",
-  () => {
-    if (isAnimating || isFullscreen) return;
-
-    const deltaY = touchStartY - touchEndY;
-    const deltaX = touchStartX - touchEndX;
-
-    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 50) {
-      navigateToCard(current + (deltaY > 0 ? 1 : -1));
-    }
-
-    touchStartY = touchEndY = touchStartX = touchEndX = 0;
-  },
-  { passive: true },
-);
-
-// 타이틀 업데이트
-function updateTitle() {
-  document.title = cards.map((_, i) => (i === current ? "■" : "□")).join("");
-}
-
-// 마우스 추적
-document.addEventListener("mousemove", (e) => {
-  mouseX = e.clientX;
-  mouseY = e.clientY;
-});
-
-// 애니메이션 루프
-function animateCardParallax() {
-  // lerp 적용 (부드러운 보간)
-  const lerpSpeed = 0.08;
+// ========================================
+// App: Main Controller
+// ========================================
+var App = {
+  cards: [],
+  indicator: null,
+  current: 0,
+  isAnimating: false,
+  isFullscreen: false,
   
-  currentMouseX += (mouseX - currentMouseX) * 0.1;
-  currentMouseY += (mouseY - currentMouseY) * 0.1;
-  currentScrollY += (targetScrollY - currentScrollY) * lerpSpeed;
-  currentScrollZ += (targetScrollZ - currentScrollZ) * lerpSpeed;
-  currentScrollAmount += (targetScrollAmount - currentScrollAmount) * lerpSpeed;
-  currentScrollDirection += (targetScrollDirection - currentScrollDirection) * lerpSpeed;
-  currentTilt += (targetTilt - currentTilt) * lerpSpeed;
+  // Scroll state
+  scroll: {
+    accumulator: 0,
+    threshold: 250,
+    timeout: null,
+    targetY: 0, currentY: 0,
+    targetZ: 0, currentZ: 0,
+    targetScale: 1, currentScale: 1,
+    amount: 0, currentAmount: 0,
+    direction: 0, currentDirection: 0
+  },
+  
+  // Mouse state
+  mouse: { x: 0, y: 0, currentX: 0, currentY: 0 },
 
-  const activeCard = cards[current];
-  const prevCard = cards[current - 1];
-  const nextCard = cards[current + 1];
+  init() {
+    this.cards = Array.from(Utils.$$('.card'));
+    this.indicator = Utils.$('#indicator');
+    this.cardStack = Utils.$('.card-stack');
+    
+    this.createIndicator();
+    this.bindEvents();
+    this.updatePositions();
+    this.updateTitle();
+    this.animate();
+  },
 
-  if (activeCard && !isAnimating && !isFullscreen) {
-    const rect = activeCard.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
+  createIndicator() {
+    this.indicator.innerHTML = '';
+    this.cards.forEach((_, i) => {
+      const dot = document.createElement('span');
+      dot.className = 'dot' + (i === this.current ? ' active' : '');
+      dot.onclick = () => this.navigateTo(i);
+      this.indicator.appendChild(dot);
+    });
+  },
 
-    const deltaX = currentMouseX - centerX;
-    const deltaY = currentMouseY - centerY;
-    const distance = Math.hypot(deltaX, deltaY);
-    const maxDist = Math.hypot(innerWidth, innerHeight) / 2;
-    const ratio = Math.min(distance / maxDist, 1);
-    const push = ratio * 50;
-
-    const angle = Math.atan2(deltaY, deltaX);
-    const moveX = -Math.cos(angle) * push;
-    const moveY = -Math.sin(angle) * push;
-
-    // 현재 카드 변환
-    if (currentScrollDirection < -5) {
-      // 위로 스크롤: Y 아래로, Z 앞으로, tilt -15도로 기울어짐
-      activeCard.style.transform = `translateZ(${currentScrollZ}px) translate(${moveX}px, ${moveY + currentScrollY}px) rotateX(${currentTilt}deg)`;
-      activeCard.style.transformOrigin = "center bottom";
-
-      // 이전 카드도 Z와 Y 동작
-      if (prevCard) {
-        const prevZ = -100 + currentScrollAmount * 100; // -100 → 0
-        const prevY = 60 - currentScrollAmount * 60; // 60% → 0%
-        const prevScale = 0.5 + currentScrollAmount * 0.5; // 0.5 → 1
-        prevCard.style.transform = `translateZ(${prevZ}px) translateY(${prevY}%) scale(${prevScale})`;
-        prevCard.style.filter = `brightness(${0.9 + currentScrollAmount * 0.1})`;
-      }
-    } else if (currentScrollDirection > 5) {
-      // 아래로 스크롤: 현재 카드가 뒤로 내려감
-      activeCard.style.transform = `translateZ(${currentScrollZ}px) translate(${moveX}px, ${moveY + currentScrollY}px)`;
-      activeCard.style.transformOrigin = "center center";
-      activeCard.style.zIndex = "5";
+  updatePositions() {
+    this.cards.forEach((card, i) => {
+      card.className = 'card';
+      card.style.cssText = '';
       
-      // 이전 카드 (더 뒤로)
-      if (prevCard) {
-        const prevZ = -100 - currentScrollAmount * 100;
-        const prevY = 60 + currentScrollAmount * 10;
-        const prevScale = 0.5 - currentScrollAmount * 0.1;
-        prevCard.style.transform = `translateZ(${prevZ}px) translateY(${prevY}%) scale(${prevScale})`;
-        prevCard.style.filter = `brightness(${0.9 - currentScrollAmount * 0.05})`;
-        prevCard.style.zIndex = "3";
-      }
+      const diff = i - this.current;
+      if (diff === 0) card.classList.add('active');
+      else if (diff === -1) card.classList.add('prev-1');
+      else if (diff <= -2) card.classList.add('prev-2');
+      else card.classList.add('next-hidden');
+    });
+    
+    this.indicator.querySelectorAll('.dot').forEach((dot, i) => {
+      dot.classList.toggle('active', i === this.current);
+    });
+  },
 
-      // 다음 카드: 아래에서 올라옴
-      if (nextCard) {
-        nextCard.style.zIndex = "15";
-        nextCard.style.transformOrigin = "center bottom";
-        
-        if (currentScrollAmount < 0.15) {
-          // 처음엔 안 보임 (화면 밖 아래쪽)
-          nextCard.style.transform = `translateZ(300px) translateY(120%) scale(1.2)`;
-          nextCard.style.visibility = "hidden";
-        } else {
-          // 0.15 이후: 아래에서 올라오면서 나타남
-          const t = (currentScrollAmount - 0.15) / 0.85; // 0~1
-          const nextZ = 300 * (1 - t); // 300 → 0
-          const nextY = 120 * (1 - t); // 120% → 0%
-          const nextScale = 1.2 - t * 0.2; // 1.2 → 1.0
-          nextCard.style.transform = `translateZ(${nextZ}px) translateY(${nextY}%) scale(${nextScale})`;
-          nextCard.style.visibility = "visible";
+  updateTitle() {
+    document.title = this.cards.map((_, i) => i === this.current ? '■' : '□').join('');
+  },
+
+  bindEvents() {
+    // Card clicks
+    this.cards.forEach((card, i) => {
+      card.addEventListener('click', (e) => {
+        if (i === this.current && !this.isFullscreen && !this.isAnimating) {
+          e.stopPropagation();
+          this.enterFullscreen(card);
         }
+      });
+    });
+
+    // Close buttons
+    Utils.$$('.close-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.isFullscreen) history.back();
+      });
+    });
+
+    // Browser back
+    window.addEventListener('popstate', () => {
+      if (this.isFullscreen) this.exitFullscreen();
+    });
+
+    // Keyboard
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); this.navigateTo(this.current + 1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); this.navigateTo(this.current - 1); }
+    });
+
+    // Mouse tracking
+    document.addEventListener('mousemove', (e) => {
+      this.mouse.x = e.clientX;
+      this.mouse.y = e.clientY;
+    });
+
+    // Wheel
+    document.addEventListener('wheel', (e) => this.handleWheel(e), { passive: false });
+
+    // Touch
+    let touchStartY = 0;
+    document.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+      if (this.isAnimating || this.isFullscreen) return;
+      const deltaY = touchStartY - e.changedTouches[0].clientY;
+      if (Math.abs(deltaY) > 50) this.navigateTo(this.current + (deltaY > 0 ? 1 : -1));
+    }, { passive: true });
+  },
+
+  handleWheel(e) {
+    e.preventDefault();
+    if (this.isAnimating || this.isFullscreen) return;
+
+    this.scroll.accumulator += e.deltaY * 0.8;
+    const absScroll = Math.abs(this.scroll.accumulator);
+    const progress = absScroll / this.scroll.threshold;
+
+    if (this.scroll.accumulator > 0) {
+      this.scroll.targetY = absScroll * 0.4;
+      this.scroll.targetZ = -absScroll * 1.2;
+      this.scroll.targetScale = 1 - progress * 0.08;
+    } else {
+      this.scroll.targetY = absScroll * 0.5;
+      this.scroll.targetZ = absScroll * 1.5;
+      this.scroll.targetScale = 1;
+    }
+    this.scroll.amount = progress;
+    this.scroll.direction = this.scroll.accumulator;
+
+    clearTimeout(this.scroll.timeout);
+
+    if (absScroll > this.scroll.threshold) {
+      const dir = this.scroll.accumulator > 0 ? 1 : -1;
+      this.resetScroll();
+      this.navigateTo(this.current + dir);
+    } else {
+      this.scroll.timeout = setTimeout(() => this.resetScroll(), 800);
+    }
+  },
+
+  resetScroll() {
+    this.scroll.accumulator = 0;
+    this.scroll.targetY = this.scroll.targetZ = 0;
+    this.scroll.targetScale = 1;
+    this.scroll.amount = this.scroll.direction = 0;
+    // currentAmount/currentDirection은 lerp로 자연스럽게 0으로 수렴
+  },
+
+  navigateTo(index) {
+    if (this.isAnimating || index < 0 || index >= this.cards.length || index === this.current || this.isFullscreen) return;
+
+    this.isAnimating = true;
+    const direction = index > this.current ? 'down' : 'up';
+    const oldIndex = this.current;
+    this.current = index;
+
+    const oldCard = this.cards[oldIndex];
+    const newCard = this.cards[index];
+    const prevOfOld = this.cards[oldIndex - 1];
+
+    const transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+
+    if (direction === 'down') {
+      // 현재 카드는 뒤로 밀려남
+      oldCard.style.transition = transition;
+      oldCard.style.transform = 'translateZ(-100px) translateY(60%) scale(0.5)';
+      oldCard.style.filter = 'brightness(0.9)';
+      oldCard.style.zIndex = '5';
+
+      // 다음 카드: 스크롤 미리보기로 이미 일부 보이는 상태일 수 있음
+      // 현재 위치에서 바로 최종 위치로 이동 (초기 위치로 리셋하지 않음)
+      newCard.style.visibility = 'visible';
+      newCard.style.opacity = '1';
+      newCard.style.zIndex = '15';
+      newCard.style.transition = transition;
+      newCard.style.transform = 'translateZ(0) translateY(0) scale(1)';
+
+      if (prevOfOld) {
+        prevOfOld.style.transition = transition;
+        prevOfOld.style.transform = 'translateZ(-200px) translateY(70%) scale(0.4)';
+        prevOfOld.style.visibility = 'hidden';
       }
     } else {
-      // 스크롤 없음: 기본 패럴랙스만 (currentScrollY 유지)
-      activeCard.style.transform = `translateZ(${currentScrollZ}px) translate(${moveX}px, ${moveY + currentScrollY}px)`;
-      activeCard.style.transformOrigin = "center center";
-      activeCard.style.zIndex = "";
+      oldCard.style.transition = transition;
+      oldCard.style.transform = 'translateZ(150px) translateY(100%) rotateX(-30deg) scale(1.1)';
+      oldCard.style.opacity = '0';
+      oldCard.style.zIndex = '15';
 
-      // 다음 카드 인라인 스타일 정리 (깜빡임 방지)
-      if (nextCard) {
-        nextCard.style.visibility = "";
-        nextCard.style.zIndex = "";
-        nextCard.style.transform = "";
-        nextCard.style.transformOrigin = "";
-      }
-      // 이전 카드 인라인 스타일 정리
-      if (prevCard) {
-        prevCard.style.transform = "";
-        prevCard.style.filter = "";
+      newCard.style.visibility = 'visible';
+      newCard.style.transition = transition;
+      newCard.style.transform = 'translateZ(0) translateY(0) scale(1)';
+      newCard.style.filter = 'brightness(1)';
+      newCard.style.zIndex = '5';
+    }
+
+    setTimeout(() => {
+      this.cards.forEach(card => card.style.cssText = '');
+      this.scroll.currentY = this.scroll.currentZ = 0;
+      this.scroll.currentScale = 1;
+      this.scroll.currentAmount = this.scroll.currentDirection = 0;
+      this.updatePositions();
+      this.updateTitle();
+      this.isAnimating = false;
+    }, 850);
+  },
+
+  enterFullscreen(card) {
+    this.isFullscreen = true;
+    card.style.transform = '';
+    
+    const rect = card.getBoundingClientRect();
+    document.body.appendChild(card);
+    
+    Object.assign(card.style, {
+      position: 'fixed',
+      top: rect.top + 'px', left: rect.left + 'px',
+      width: rect.width + 'px', height: rect.height + 'px',
+      transition: 'none'
+    });
+    
+    card.offsetHeight; // reflow
+    
+    Object.assign(card.style, {
+      transition: 'all 0.6s cubic-bezier(0.4,0,0.2,1)',
+      top: '0', left: '0',
+      width: '100vw', height: '100vh',
+      borderRadius: '0'
+    });
+    card.classList.add('fullscreen');
+    document.body.style.overflow = 'hidden';
+    history.pushState({ fullscreen: true }, '');
+
+    // Card-specific actions
+    if (card.id === 'card-1' && window.Card1) Card1.onEnterFullscreen();
+    if (card.id === 'card-2' && window.Card2) Card2.resume();
+  },
+
+  exitFullscreen() {
+    const card = this.cards[this.current];
+    const stackRect = this.cardStack.getBoundingClientRect();
+
+    // Card-specific cleanup
+    if (window.Card2) Card2.pauseAll();
+    if (window.Card5) Card5.closeVideo();
+
+    card.classList.add('shrinking');
+    Object.assign(card.style, {
+      transition: 'all 0.6s cubic-bezier(0.4,0,0.2,1)',
+      top: stackRect.top + 'px', left: stackRect.left + 'px',
+      width: stackRect.width + 'px', height: stackRect.height + 'px',
+      borderRadius: '24px'
+    });
+
+    setTimeout(() => {
+      card.classList.remove('fullscreen', 'shrinking');
+      card.style.cssText = '';
+      this.cardStack.appendChild(card);
+      this.isFullscreen = false;
+      document.body.style.overflow = '';
+      this.updatePositions();
+    }, 600);
+  },
+
+  animate() {
+    // Lerp mouse
+    this.mouse.currentX = Utils.lerp(this.mouse.currentX, this.mouse.x, 0.12);
+    this.mouse.currentY = Utils.lerp(this.mouse.currentY, this.mouse.y, 0.12);
+    
+    // Lerp scroll
+    this.scroll.currentY = Utils.lerp(this.scroll.currentY, this.scroll.targetY, 0.12);
+    this.scroll.currentZ = Utils.lerp(this.scroll.currentZ, this.scroll.targetZ, 0.12);
+    this.scroll.currentScale = Utils.lerp(this.scroll.currentScale, this.scroll.targetScale, 0.12);
+    this.scroll.currentAmount = Utils.lerp(this.scroll.currentAmount, this.scroll.amount, 0.1);
+    this.scroll.currentDirection = Utils.lerp(this.scroll.currentDirection, this.scroll.direction, 0.1);
+
+    const activeCard = this.cards[this.current];
+    const nextCard = this.cards[this.current + 1];
+    
+    if (activeCard && !this.isAnimating && !this.isFullscreen) {
+      const rect = activeCard.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      
+      const deltaX = this.mouse.currentX - centerX;
+      const deltaY = this.mouse.currentY - centerY;
+      const distance = Math.hypot(deltaX, deltaY);
+      const maxDist = Math.hypot(innerWidth, innerHeight) / 2;
+      const ratio = Math.min(distance / maxDist, 1);
+      
+      const angle = Math.atan2(deltaY, deltaX);
+      const push = ratio * 50;
+      const moveX = -Math.cos(angle) * push;
+      const moveY = -Math.sin(angle) * push;
+
+      activeCard.style.transform = `translateZ(${this.scroll.currentZ}px) translate(${moveX}px, ${moveY + this.scroll.currentY}px) scale(${this.scroll.currentScale})`;
+      
+      const shadowX = Math.cos(angle) * 20 * ratio;
+      const shadowY = Math.sin(angle) * 20 * ratio + 40;
+      activeCard.style.boxShadow = `${shadowX}px ${shadowY}px 80px rgba(0,0,0,0.12)`;
+
+      if (this.scroll.currentDirection > 5 && nextCard) {
+        const progress = Utils.clamp(this.scroll.currentAmount, 0, 1);
+        const nextZ = 150 * (1 - progress);
+        const nextY = 60 * (1 - progress);
+        const nextScale = 1.15 - progress * 0.15;
+        const nextOpacity = Utils.clamp(progress * 2.5, 0, 1);
+        nextCard.style.visibility = 'visible';
+        nextCard.style.opacity = nextOpacity;
+        nextCard.style.transform = `translateZ(${nextZ}px) translateY(${nextY}%) scale(${nextScale})`;
+        nextCard.style.zIndex = '15';
+      } else if (nextCard && this.scroll.currentDirection <= 5) {
+        nextCard.style.visibility = '';
+        nextCard.style.opacity = '';
+        nextCard.style.transform = '';
+        nextCard.style.zIndex = '';
       }
     }
 
-    // 그림자
-    const shadowX = Math.cos(angle) * 20 * ratio;
-    const shadowY = Math.sin(angle) * 20 * ratio + 40;
-    activeCard.style.boxShadow = `${shadowX}px ${shadowY}px 80px rgba(0,0,0,0.12), ${shadowX / 2}px ${shadowY / 2}px 30px rgba(0,0,0,0.08)`;
+    requestAnimationFrame(() => this.animate());
   }
+};
 
-  requestAnimationFrame(animateCardParallax);
-}
+// ========================================
+// Initialize
+// ========================================
+document.addEventListener('DOMContentLoaded', () => {
+  App.init();
+  Popup.init();
+  VideoPopup.init();
 
-// 초기화
-createIndicator();
-updateCardPositions();
-updateTitle();
-animateCardParallax();
+  // Card 모듈 초기화 (각 card*.js에서 window에 등록)
+  if (window.Card1) Card1.init();
+  if (window.Card2) Card2.init();
+  if (window.Card5) Card5.init();
+});

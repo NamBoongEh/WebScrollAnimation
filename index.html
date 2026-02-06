@@ -5,128 +5,96 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>■□□□□□</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="card1.css">
-  <link rel="stylesheet" href="card2.css">
-  <link rel="stylesheet" href="card3.css">
-  <link rel="stylesheet" href="card5.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
   <div class="card-stack">
+    <!-- Card 1: 충돌 감지 플립 카드 -->
     <section class="card active" id="card-1">
       <h2 class="card-number">1</h2>
-      <div class="card1-scatter-container" id="grid-container-1">
-        <div class="grid-item scatter-item" data-index="0" style="top: 8%; left: 5%;"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
-        <div class="grid-item scatter-item" data-index="1" style="top: 5%; left: 65%;"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
-        <div class="grid-item scatter-item" data-index="2" style="top: 35%; left: 25%;"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
-        <div class="grid-item scatter-item" data-index="3" style="top: 40%; left: 70%;"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
-        <div class="grid-item scatter-item" data-index="4" style="top: 70%; left: 8%;"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
-        <div class="grid-item scatter-item" data-index="5" style="top: 75%; left: 55%;"><div class="grid-front"></div><div class="grid-back"><button class="grid-button">열기</button></div></div>
+      <div class="scatter-container" id="scatter-container">
+        <div class="scatter-item" data-index="0" style="top:8%;left:5%"><div class="card-inner"><div class="card-front"></div><div class="card-back"><button class="card-btn">열기</button></div></div></div>
+        <div class="scatter-item" data-index="1" style="top:5%;left:65%"><div class="card-inner"><div class="card-front"></div><div class="card-back"><button class="card-btn">열기</button></div></div></div>
+        <div class="scatter-item" data-index="2" style="top:35%;left:25%"><div class="card-inner"><div class="card-front"></div><div class="card-back"><button class="card-btn">열기</button></div></div></div>
+        <div class="scatter-item" data-index="3" style="top:40%;left:70%"><div class="card-inner"><div class="card-front"></div><div class="card-back"><button class="card-btn">열기</button></div></div></div>
+        <div class="scatter-item" data-index="4" style="top:70%;left:8%"><div class="card-inner"><div class="card-front"></div><div class="card-back"><button class="card-btn">열기</button></div></div></div>
+        <div class="scatter-item" data-index="5" style="top:75%;left:55%"><div class="card-inner"><div class="card-front"></div><div class="card-back"><button class="card-btn">열기</button></div></div></div>
       </div>
-      <img src="Image/human.jpg" alt="Human" class="human-image" id="human-image">
-      <button class="close-button">뒤로가기</button>
+      <img src="Image/human.jpg" alt="Human" class="human-avatar" id="human-avatar">
+      <button class="close-btn">뒤로가기</button>
     </section>
+
+    <!-- Card 2: 비디오 그리드 -->
     <section class="card" id="card-2">
       <h2 class="card-number">2</h2>
-      <div class="grid-container masonry-grid" id="grid-container-2">
-        <div class="grid-item video-item size-large" data-index="0"><video class="grid-video" src="Video/vid1.mp4" muted></video><span class="play-overlay">▶</span></div>
-        <div class="grid-item video-item size-small" data-index="1"><video class="grid-video" src="Video/vid2.mp4" muted></video><span class="play-overlay">▶</span></div>
-        <div class="grid-item video-item size-medium" data-index="2"><video class="grid-video" src="Video/vid3.mp4" muted></video><span class="play-overlay">▶</span></div>
-        <div class="grid-item video-item size-small" data-index="3"><video class="grid-video" src="Video/vid4.mp4" muted></video><span class="play-overlay">▶</span></div>
-        <div class="grid-item video-item size-medium" data-index="4"><video class="grid-video" src="Video/vid5.mp4" muted></video><span class="play-overlay">▶</span></div>
-        <div class="grid-item video-item size-large" data-index="5"><video class="grid-video" src="Video/vid6.mp4" muted></video><span class="play-overlay">▶</span></div>
+      <div class="video-grid" id="video-grid">
+        <div class="video-item size-lg" data-index="0"><video src="Video/vid1.mp4" muted></video><span class="play-icon">▶</span></div>
+        <div class="video-item size-sm" data-index="1"><video src="Video/vid2.mp4" muted></video><span class="play-icon">▶</span></div>
+        <div class="video-item size-md" data-index="2"><video src="Video/vid3.mp4" muted></video><span class="play-icon">▶</span></div>
+        <div class="video-item size-sm" data-index="3"><video src="Video/vid4.mp4" muted></video><span class="play-icon">▶</span></div>
+        <div class="video-item size-md" data-index="4"><video src="Video/vid5.mp4" muted></video><span class="play-icon">▶</span></div>
+        <div class="video-item size-lg" data-index="5"><video src="Video/vid6.mp4" muted></video><span class="play-icon">▶</span></div>
       </div>
-      <button class="close-button">뒤로가기</button>
+      <button class="close-btn">뒤로가기</button>
     </section>
+
+    <!-- Card 3: CSS 나선 계단 -->
     <section class="card" id="card-3">
       <h2 class="card-number">3</h2>
-      <div class="spiral-container" id="spiral-container">
-        <div class="spiral-scene" id="spiral-scene">
-          <div class="spiral-pillar"></div>
-          <div class="spiral-stair" data-index="0"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="1"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="2"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="3"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="4"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div><div class="stair-frame" data-video="Video/vid1.mp4"><div class="stair-frame-inner">▶</div></div></div>
-          <div class="spiral-stair" data-index="5"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="6"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="7"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="8"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="9"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div><div class="stair-frame" data-video="Video/vid2.mp4"><div class="stair-frame-inner">▶</div></div></div>
-          <div class="spiral-stair" data-index="10"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="11"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="12"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="13"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="14"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div><div class="stair-frame" data-video="Video/vid3.mp4"><div class="stair-frame-inner">▶</div></div></div>
-          <div class="spiral-stair" data-index="15"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="16"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="17"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="18"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="19"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div><div class="stair-frame" data-video="Video/vid4.mp4"><div class="stair-frame-inner">▶</div></div></div>
-          <div class="spiral-stair" data-index="20"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="21"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="22"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="23"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="24"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div><div class="stair-frame" data-video="Video/vid5.mp4"><div class="stair-frame-inner">▶</div></div></div>
-          <div class="spiral-stair" data-index="25"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="26"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="27"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="28"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div></div>
-          <div class="spiral-stair" data-index="29"><div class="stair-top"></div><div class="stair-front"></div><div class="stair-side"></div><div class="stair-railing"></div><div class="stair-frame" data-video="Video/vid6.mp4"><div class="stair-frame-inner">▶</div></div></div>
-        </div>
-        <div class="spiral-progress" id="spiral-progress">1F</div>
-      </div>
-      <div class="particle-container" id="particle-container"></div>
-      <button class="close-button">뒤로가기</button>
+      <div class="spiral-wrap" id="spiral-wrap"></div>
+      <div class="floor-indicator" id="floor-indicator">1F</div>
+      <div class="particle-box" id="particle-box-3"></div>
+      <button class="close-btn">뒤로가기</button>
     </section>
+
+    <!-- Card 4: 빈 카드 -->
     <section class="card" id="card-4">
       <h2 class="card-number">4</h2>
-      <button class="close-button">뒤로가기</button>
+      <button class="close-btn">뒤로가기</button>
     </section>
+
+    <!-- Card 5: Three.js 나선 계단 -->
     <section class="card" id="card-5">
       <h2 class="card-number">5</h2>
-      <div class="c5-container" id="c5-container"></div>
-      <div class="c5-progress" id="c5-progress">1F</div>
-      <div class="particle-container" id="particle-container-5"></div>
-      <div class="c5-video-popup" id="c5-video-popup">
-        <div class="c5-video-content">
-          <video id="c5-video" controls></video>
-          <button class="popup-close-button" id="c5-video-close">뒤로가기</button>
-        </div>
-      </div>
-      <button class="close-button">뒤로가기</button>
+      <div class="three-container" id="three-container"></div>
+      <div class="floor-indicator" id="floor-indicator-5">1F</div>
+      <div class="particle-box" id="particle-box-5"></div>
+      <button class="close-btn">뒤로가기</button>
     </section>
+
+    <!-- Card 6: 빈 카드 -->
     <section class="card" id="card-6">
       <h2 class="card-number">6</h2>
-      <button class="close-button">뒤로가기</button>
+      <button class="close-btn">뒤로가기</button>
     </section>
   </div>
 
-  <nav class="indicator"></nav>
+  <nav class="indicator" id="indicator"></nav>
 
+  <!-- 공통 팝업 -->
   <div class="popup-overlay" id="popup-overlay">
-    <div class="popup-content" id="popup-content">
-      <h2>팝업 제목</h2>
-      <p>팝업 내용이 여기에 표시됩니다.</p>
-      <button class="popup-close-button" id="popup-close">뒤로가기</button>
+    <div class="popup-box">
+      <h2 id="popup-title">제목</h2>
+      <p id="popup-desc">내용</p>
+      <button class="popup-btn" id="popup-close">닫기</button>
     </div>
   </div>
 
-  <div class="card3-video-popup" id="card3-video-popup">
-    <div class="card3-video-content">
-      <video id="card3-video" controls></video>
-      <button class="popup-close-button" id="card3-video-close">뒤로가기</button>
-    </div>
+  <!-- 비디오 팝업 -->
+  <div class="video-popup" id="video-popup">
+    <video id="popup-video" controls></video>
+    <button class="popup-btn" id="video-close">닫기</button>
   </div>
 
-  <button class="mute-button" id="mute-button">
-    <span class="mute-icon" id="mute-icon">🔇</span>
-  </button>
+  <!-- 음소거 버튼 -->
+  <button class="mute-btn" id="mute-btn"><span id="mute-icon">🔇</span></button>
 
-  <script src="script.js"></script>
+  <!-- Card 모듈 (script.js보다 먼저 로드) -->
   <script src="card1.js"></script>
   <script src="card2.js"></script>
   <script src="card3.js"></script>
   <script src="card5.js"></script>
+  <!-- 메인 컨트롤러 (마지막에 로드) -->
+  <script src="script.js"></script>
 </body>
 </html>

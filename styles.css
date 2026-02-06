@@ -1,211 +1,489 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* ========================================
+   Base Reset & Variables
+   ======================================== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --dark: #1a1a1a;
+  --gray: #6b7280;
+  --light: #f5f7fa;
+  --white: #ffffff;
+  --shadow: 0 40px 80px rgba(0,0,0,0.12), 0 10px 30px rgba(0,0,0,0.08);
+  --transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body, html {
-  margin: 0;
   height: 100%;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  background: linear-gradient(135deg, var(--light) 0%, #e8ecf1 100%);
 }
 
+/* ========================================
+   Card Stack
+   ======================================== */
 .card-stack {
   position: fixed;
-  top: 50%;
-  left: 50%;
+  top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 70vw;
-  height: 70vh;
-  max-width: 1200px;
-  max-height: 800px;
+  width: 70vw; height: 70vh;
+  max-width: 1200px; max-height: 800px;
   perspective: 2000px;
-  perspective-origin: 50% 50%;
 }
 
 .card {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  inset: 0;
+  background: linear-gradient(135deg, var(--white) 0%, #f8f9fa 100%);
   border-radius: 24px;
-  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.12), 0 10px 30px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow);
   padding: 60px 50px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: flex-start;
   transform-style: preserve-3d;
   will-change: transform;
   backface-visibility: hidden;
-  opacity: 1;
   visibility: hidden;
   pointer-events: none;
-  transition: box-shadow 0.4s ease, transform 0.1s ease-out;
+  transition: box-shadow 0.4s ease;
   cursor: pointer;
   overflow: hidden;
 }
 
+.card-number {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8rem;
+  font-weight: 700;
+  color: var(--dark);
+  opacity: 0.1;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Card States */
+.card.active {
+  transform: translateZ(0) translateY(0) scale(1);
+  visibility: visible;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.card.prev-1 {
+  transform: translateZ(-100px) translateY(60%) scale(0.5);
+  visibility: visible;
+  z-index: 5;
+  filter: brightness(0.9);
+}
+
+.card.prev-2 {
+  transform: translateZ(-200px) translateY(70%) scale(0.4);
+  visibility: hidden;
+  z-index: 4;
+  filter: brightness(0.85);
+}
+
+.card.next-hidden {
+  transform: translateZ(150px) translateY(60%) scale(1.15);
+  visibility: hidden;
+  opacity: 0;
+  z-index: 4;
+}
+
+/* Fullscreen */
 .card.fullscreen {
   position: fixed;
   z-index: 1000 !important;
-  opacity: 1 !important;
   visibility: visible !important;
   pointer-events: auto;
   overflow-y: auto;
-  overflow-x: hidden;
   padding: 80px 50px 120px;
   cursor: default;
   box-shadow: none !important;
   filter: none !important;
-  inset: auto;
-  animation: expandCard 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  -ms-overflow-style: none;
   scrollbar-width: none;
 }
+.card.fullscreen::-webkit-scrollbar { display: none; }
+.card.fullscreen .card-number { font-size: 15rem; opacity: 0.05; }
 
-.card.fullscreen::-webkit-scrollbar {
-  display: none;
-}
-
-@keyframes expandCard {
-  0% { width: 100%; height: 100%; top: 0; left: 0; border-radius: 24px; }
-  100% { width: 100vw; height: 100vh; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 0; }
-}
-
-.card.fullscreen.closing {
-  animation: shrinkCard 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes shrinkCard {
-  0% { width: 100vw; height: 100vh; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 0; opacity: 1; }
-  100% { width: 100%; height: 100%; top: 0; left: 0; transform: none; border-radius: 24px; opacity: 1; }
-}
-
-.close-button {
+/* ========================================
+   Close Button
+   ======================================== */
+.close-btn {
   position: absolute;
-  bottom: 40px;
-  left: 50%;
+  bottom: 40px; left: 50%;
   transform: translateX(-50%);
-  background: #3b82f6;
-  color: white;
+  background: var(--primary);
+  color: var(--white);
   border: none;
   padding: 16px 48px;
   border-radius: 50px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 10px 30px rgba(59,130,246,0.3);
   transition: all 0.3s ease;
   z-index: 10;
   opacity: 0;
   pointer-events: none;
 }
+.card.fullscreen .close-btn { opacity: 1; pointer-events: auto; }
+.close-btn:hover { background: var(--primary-dark); transform: translateX(-50%) translateY(-2px); }
 
-.card.fullscreen .close-button { opacity: 1; pointer-events: auto; }
-.close-button:hover { background: #2563eb; transform: translateX(-50%) translateY(-2px); box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4); }
-.close-button:active { transform: translateX(-50%) translateY(0); }
+/* ========================================
+   Indicator
+   ======================================== */
+.indicator {
+  position: fixed;
+  right: 40px; top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 100;
+}
 
-.card h2 { font-size: 3rem; font-weight: 700; color: #1a1a1a; margin-bottom: 20px; letter-spacing: -0.02em; line-height: 1.2; }
-.card p { font-size: 1.4rem; color: #6b7280; line-height: 1.6; font-weight: 400; }
+.dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dot:hover { background: #94a3b8; transform: scale(1.2); }
+.dot.active { background: var(--primary); transform: scale(1.4); }
 
-.card-number {
-  font-size: 8rem; font-weight: 700; color: #1a1a1a;
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  margin: 0; opacity: 0.1; z-index: 1;
+/* ========================================
+   Card 1: Scatter Items
+   ======================================== */
+.scatter-container {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  overflow: visible;
+}
+
+.scatter-item {
+  position: absolute;
+  perspective: 1000px;
+  cursor: pointer;
+  transition: width var(--transition);
+}
+.scatter-item[data-index="0"] { width: 16%; }
+.scatter-item[data-index="1"] { width: 13%; }
+.scatter-item[data-index="2"] { width: 18%; }
+.scatter-item[data-index="3"] { width: 12%; }
+.scatter-item[data-index="4"] { width: 17%; }
+.scatter-item[data-index="5"] { width: 14%; }
+
+.card.fullscreen .scatter-item[data-index="0"] { width: 18%; }
+.card.fullscreen .scatter-item[data-index="1"] { width: 14%; }
+.card.fullscreen .scatter-item[data-index="2"] { width: 20%; }
+.card.fullscreen .scatter-item[data-index="3"] { width: 13%; }
+.card.fullscreen .scatter-item[data-index="4"] { width: 19%; }
+.card.fullscreen .scatter-item[data-index="5"] { width: 15%; }
+
+.card-inner {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  transform-style: preserve-3d;
+  transition: transform var(--transition);
+}
+.scatter-item.flipped .card-inner { transform: rotateY(180deg); }
+
+.card-front, .card-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card.fullscreen .card-front,
+.card.fullscreen .card-back { border-radius: 10px; }
+
+.card-front {
+  background: linear-gradient(135deg, #e0e5ec, #d0d5dc);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.card-back {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  transform: rotateY(180deg);
+  box-shadow: 0 2px 10px rgba(59,130,246,0.3);
+}
+
+.card-btn {
+  background: var(--white);
+  color: var(--primary);
+  border: none;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.card.fullscreen .card-btn { padding: 8px 16px; font-size: 0.85rem; }
+.card-btn:hover { background: #f0f0f0; transform: scale(1.05); }
+
+.human-avatar {
+  position: absolute;
+  width: 5%;
+  min-width: 25px;
+  max-width: 45px;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 50%;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  z-index: 20;
   pointer-events: none;
 }
-.card.fullscreen .card-number { font-size: 15rem; opacity: 0.05; }
+.card.fullscreen .human-avatar { width: 4%; min-width: 35px; max-width: 70px; }
 
-/* 팝업 공통 */
-.popup-close-button {
-  background: #3b82f6; color: white; border: none;
-  padding: 16px 48px; border-radius: 50px; font-size: 1rem; font-weight: 600;
-  cursor: pointer; box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3); transition: all 0.3s ease;
+/* ========================================
+   Card 2: Video Grid
+   ======================================== */
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  z-index: 10;
+  grid-auto-rows: calc(70vh * 0.12);
+  transition: all var(--transition);
 }
-.popup-close-button:hover { background: #2563eb; transform: translateY(-2px); box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4); }
+.card.fullscreen .video-grid {
+  width: 80%;
+  max-width: 850px;
+  gap: 10px;
+  grid-auto-rows: calc(100vh * 0.10);
+}
 
-/* 파티클 공통 */
-.particle-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; overflow: hidden; }
-.particle { position: absolute; border-radius: 50%; pointer-events: none; animation: particleExplode 1.5s ease-out forwards; }
-@keyframes particleExplode {
-  0% { opacity: 1; transform: translate(0, 0) scale(1); }
+.video-item {
+  position: relative;
+  border-radius: 5px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.card.fullscreen .video-item { border-radius: 10px; }
+.video-item.size-lg { grid-column: span 2; grid-row: span 2; }
+.video-item.size-md { grid-column: span 1; grid-row: span 2; }
+.video-item.size-sm { grid-column: span 1; grid-row: span 1; }
+
+.video-item video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.play-icon {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.9rem;
+  color: var(--white);
+  background: rgba(0,0,0,0.5);
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+.card.fullscreen .play-icon { width: 40px; height: 40px; font-size: 1.3rem; }
+.video-item:hover .play-icon { background: rgba(59,130,246,0.8); transform: translate(-50%,-50%) scale(1.1); }
+.video-item.playing .play-icon { opacity: 0; }
+
+/* ========================================
+   Card 3 & 5: Spiral Stairs
+   ======================================== */
+.spiral-wrap, .three-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #0a0a15, #1a1a2e 30%, #16213e 70%, #0f3460);
+  transition: border-radius var(--transition);
+}
+.card.fullscreen .spiral-wrap,
+.card.fullscreen .three-container { border-radius: 0; }
+
+.three-container { background: #f5f5f5; }
+
+.floor-indicator {
+  position: absolute;
+  bottom: 80px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.7);
+  z-index: 20;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+  display: none;
+  pointer-events: none;
+}
+.card.fullscreen .floor-indicator { display: block; font-size: 1.5rem; bottom: 100px; }
+#floor-indicator-5 { color: rgba(0,0,0,0.6); text-shadow: 0 1px 3px rgba(255,255,255,0.8); }
+
+/* ========================================
+   Particles
+   ======================================== */
+.particle-box {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: particleBurst 1.5s ease-out forwards;
+}
+@keyframes particleBurst {
+  0% { opacity: 1; transform: translate(0,0) scale(1); }
   100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
 }
 
-/* 음소거 버튼 */
-.mute-button { position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; border-radius: 50%; background: white; border: none; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); cursor: pointer; z-index: 99999; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
-.mute-button:hover { transform: scale(1.1); box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2); }
-.mute-icon { font-size: 1.5rem; }
-.mute-button.unmuted { background: #3b82f6; }
-.mute-button.unmuted .mute-icon { filter: brightness(10); }
+/* ========================================
+   Popups
+   ======================================== */
+.popup-overlay, .video-popup {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.4s ease;
+}
+.popup-overlay.active, .video-popup.active { opacity: 1; visibility: visible; }
 
-/* 카드 스택 상태 */
-.card.active { transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1); opacity: 1; visibility: visible; z-index: 10; pointer-events: auto; animation: none; }
-.card.prev-1 { transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5); opacity: 1; visibility: visible; z-index: 5; filter: brightness(0.9); pointer-events: none; }
-.card.prev-2 { transform: translateZ(-200px) translateY(70%) rotateX(0deg) scale(0.4); opacity: 1; visibility: hidden; z-index: 4; filter: brightness(0.85); pointer-events: none; }
-.card.next-hidden { transform: translateZ(-100px) translateY(100%) rotateX(0deg) scale(0.5); opacity: 1; visibility: hidden; z-index: 4; pointer-events: none; }
+.popup-box {
+  background: linear-gradient(135deg, var(--white), #f8f9fa);
+  border-radius: 24px;
+  padding: clamp(30px, 5vw, 60px);
+  max-width: min(500px, 85vw);
+  text-align: center;
+  transform: scale(0.8) translateY(50px);
+  transition: all 0.4s ease;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.3);
+}
+.popup-overlay.active .popup-box { transform: scale(1) translateY(0); }
+.popup-box h2 { font-size: clamp(1.4rem, 3vw, 2rem); color: var(--dark); margin-bottom: 20px; }
+.popup-box p { font-size: clamp(0.9rem, 1.5vw, 1.1rem); color: var(--gray); margin-bottom: 30px; }
 
-/* 스택 애니메이션 클래스 */
-.card.animating-exit-down { animation: exitDown 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; z-index: 5 !important; }
-.card.animating-enter-from-bottom { animation: enterFromBottom 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; z-index: 10 !important; opacity: 1 !important; }
-.card.animating-prev-exit { animation: prevExit 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; z-index: 4 !important; }
-.card.animating-exit-down-tilt { animation: exitDownTilt 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; z-index: 10 !important; }
-.card.animating-enter-from-top { animation: enterFromTop 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; z-index: 5 !important; }
-.card.animating-prev-enter { animation: prevEnter 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; z-index: 4 !important; opacity: 1 !important; }
+.popup-btn {
+  background: var(--primary);
+  color: var(--white);
+  border: none;
+  padding: 16px 48px;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(59,130,246,0.3);
+  transition: all 0.3s ease;
+}
+.popup-btn:hover { background: var(--primary-dark); transform: translateY(-2px); }
+
+.video-popup video {
+  max-width: min(80vw, 900px);
+  max-height: 60vh;
+  border-radius: 12px;
+  margin-bottom: 30px;
+}
+
+/* ========================================
+   Mute Button
+   ======================================== */
+.mute-btn {
+  position: fixed;
+  bottom: 30px; right: 30px;
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  background: var(--white);
+  border: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  cursor: pointer;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  transition: all 0.3s ease;
+}
+.mute-btn:hover { transform: scale(1.1); }
+.mute-btn.unmuted { background: var(--primary); }
+.mute-btn.unmuted span { filter: brightness(10); }
+
+/* ========================================
+   Animations
+   ======================================== */
+.card.anim-exit-down {
+  animation: exitDown 1s cubic-bezier(0.4,0,0.2,1) forwards;
+  z-index: 5 !important;
+}
+.card.anim-enter-up {
+  animation: enterUp 1s cubic-bezier(0.4,0,0.2,1) forwards;
+  z-index: 10 !important;
+}
+.card.anim-exit-up {
+  animation: exitUp 1s cubic-bezier(0.4,0,0.2,1) forwards;
+  z-index: 10 !important;
+}
+.card.anim-enter-down {
+  animation: enterDown 1s cubic-bezier(0.4,0,0.2,1) forwards;
+  z-index: 5 !important;
+}
 
 @keyframes exitDown {
-  0% { transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1); opacity: 1; filter: brightness(1); }
-  100% { transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5); opacity: 1; filter: brightness(0.9); }
+  from { transform: translateZ(0) translateY(0) scale(1); filter: brightness(1); }
+  to { transform: translateZ(-100px) translateY(60%) scale(0.5); filter: brightness(0.9); }
 }
-@keyframes enterFromBottom {
-  0% { transform: translateZ(150px) translateY(120%) rotateX(-50deg) scale(1); opacity: 1; filter: brightness(1); }
-  100% { transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1); opacity: 1; filter: brightness(1); }
+@keyframes enterUp {
+  from { transform: translateZ(150px) translateY(120%) rotateX(-50deg) scale(1); }
+  to { transform: translateZ(0) translateY(0) rotateX(0) scale(1); }
 }
-@keyframes exitDownTilt {
-  0% { transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1); opacity: 1; filter: brightness(1); visibility: visible; }
-  100% { transform: translateZ(150px) translateY(120%) rotateX(-50deg) scale(1); opacity: 1; filter: brightness(1); visibility: hidden; }
+@keyframes exitUp {
+  from { transform: translateZ(0) translateY(0) scale(1); visibility: visible; }
+  to { transform: translateZ(150px) translateY(120%) rotateX(-50deg) scale(1); visibility: hidden; }
 }
-@keyframes enterFromTop {
-  0% { transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5); opacity: 1; filter: brightness(0.9); }
-  100% { transform: translateZ(0px) translateY(0%) rotateX(0deg) scale(1); opacity: 1; filter: brightness(1); }
-}
-@keyframes prevExit {
-  0% { transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5); opacity: 1; filter: brightness(0.9); visibility: visible; }
-  100% { transform: translateZ(-200px) translateY(70%) rotateX(0deg) scale(0.4); opacity: 1; filter: brightness(0.85); visibility: hidden; }
-}
-@keyframes prevEnter {
-  0% { transform: translateZ(-200px) translateY(70%) rotateX(0deg) scale(0.4); opacity: 1; filter: brightness(0.85); visibility: hidden; }
-  100% { transform: translateZ(-100px) translateY(60%) rotateX(0deg) scale(0.5); opacity: 1; filter: brightness(0.9); visibility: visible; }
+@keyframes enterDown {
+  from { transform: translateZ(-100px) translateY(60%) scale(0.5); filter: brightness(0.9); }
+  to { transform: translateZ(0) translateY(0) scale(1); filter: brightness(1); }
 }
 
-/* Indicator */
-.indicator { position: fixed; right: 40px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 16px; z-index: 100; }
-.dot { width: 12px; height: 12px; border-radius: 50%; background: #cbd5e1; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; position: relative; }
-.dot::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid transparent; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-.dot:hover { background: #94a3b8; transform: scale(1.2); }
-.dot.active { background: #3b82f6; transform: scale(1.4); }
-.dot.active::after { border-color: #3b82f6; opacity: 0.3; }
-
-/* 공통 모바일 */
+/* ========================================
+   Mobile Responsive
+   ======================================== */
 @media (max-width: 768px) {
-  .card-stack { width: 85vw; height: 60vh; max-width: none; max-height: none; }
+  .card-stack { width: 85vw; height: 60vh; }
   .card { padding: 30px 20px; border-radius: 16px; }
-  .card h2 { font-size: 1.8rem; }
-  .card p { font-size: 1rem; }
   .card-number { font-size: 5rem; }
+  .card.fullscreen { padding: 50px 20px 100px; }
   .card.fullscreen .card-number { font-size: 8rem; }
-  .card.fullscreen { padding: 50px 20px 100px; border-radius: 0; }
   .indicator { right: 15px; gap: 12px; }
   .dot { width: 10px; height: 10px; }
-  .close-button { bottom: 25px; padding: 12px 35px; font-size: 0.85rem; }
-  .mute-button { width: 44px; height: 44px; bottom: 20px; right: 20px; }
-  .mute-icon { font-size: 1.3rem; }
-  .popup-close-button { padding: 14px 40px; font-size: 0.9rem; }
+  .close-btn { bottom: 25px; padding: 12px 35px; font-size: 0.85rem; }
+  .mute-btn { width: 44px; height: 44px; bottom: 20px; right: 20px; font-size: 1.3rem; }
+  .video-grid { grid-auto-rows: calc(60vh * 0.12); }
 }
 
 @media (max-width: 400px) {
