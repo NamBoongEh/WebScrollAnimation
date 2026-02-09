@@ -19,23 +19,27 @@ window.Card5 = {
   mouse: null,
   frameMeshes: [],
   stairGroup: null,
+  characterMesh: null,
 
-  // State
-  scroll: 0,
-  targetScroll: 0,
+  // State — 계단 단위 스텝 기반
+  currentStep: 0,
+  targetStep: 0,
+  animStep: 0,        // 보간된 현재 위치 (소수점)
+  jumpPhase: 0,       // 0~1 점프 애니메이션 진행도
+  isJumping: false,
   maxScroll: 100,
   hasExploded: false,
   isInitialized: false,
 
-  // Parameters — 레퍼런스 이미지에 맞춰 조정
-  TOTAL_STAIRS: 36,
+  // Parameters — 계단 2배
+  TOTAL_STAIRS: 72,
   STAIR_HEIGHT: 1.2,
   ANGLE_PER_STAIR: 22,
   INNER_RADIUS: 1.0,
   OUTER_RADIUS: 4.8,
   STAIR_THICKNESS: 0.28,
   EYE_HEIGHT: 1.6,
-  FRAME_STAIRS: [5, 11, 17, 23, 29, 35],
+  FRAME_STAIRS: [10, 22, 34, 46, 58, 70],
   VIDEOS: [
     "Video/vid1.mp4",
     "Video/vid2.mp4",
@@ -43,6 +47,14 @@ window.Card5 = {
     "Video/vid4.mp4",
     "Video/vid5.mp4",
     "Video/vid6.mp4",
+  ],
+  VIDEO_INFO: [
+    { title: "Chapter 1", desc: "여정의 시작. 낯선 길 위에서 첫 발을 내딛다." },
+    { title: "Chapter 2", desc: "작은 도전들을 마주하며 한 걸음씩 나아가다." },
+    { title: "Chapter 3", desc: "흔들리는 순간에도 포기하지 않는 의지." },
+    { title: "Chapter 4", desc: "함께하는 사람들에게서 새로운 힘을 얻다." },
+    { title: "Chapter 5", desc: "높은 곳에서 바라본 풍경, 그리고 깨달음." },
+    { title: "Chapter 6", desc: "끝이 아닌 새로운 시작을 향해 나아가다." },
   ],
 
   // Materials (shared)
@@ -130,6 +142,7 @@ window.Card5 = {
 
     this.createStairs();
     this.createRailings();
+    this.createCharacter();
     this.setupCamera();
     this.bindEvents();
     this.handleResize();
@@ -147,14 +160,16 @@ window.Card5 = {
     const maxAng = Math.max(startAng, endAng);
     const span = maxAng - minAng;
 
-    shape.moveTo(Math.cos(minAng) * outerR, Math.sin(minAng) * outerR);
+    // sin을 반전하여 rotateX(-PI/2) 후 Z가 +sin(a)*R이 되도록 함
+    // → 난간/캐릭터와 같은 방향
+    shape.moveTo(Math.cos(minAng) * outerR, -Math.sin(minAng) * outerR);
     for (let i = 1; i <= segments; i++) {
       const a = minAng + (span * i) / segments;
-      shape.lineTo(Math.cos(a) * outerR, Math.sin(a) * outerR);
+      shape.lineTo(Math.cos(a) * outerR, -Math.sin(a) * outerR);
     }
     for (let i = segments; i >= 0; i--) {
       const a = minAng + (span * i) / segments;
-      shape.lineTo(Math.cos(a) * innerR, Math.sin(a) * innerR);
+      shape.lineTo(Math.cos(a) * innerR, -Math.sin(a) * innerR);
     }
     shape.closePath();
 
@@ -383,6 +398,7 @@ window.Card5 = {
     );
     inner.position.z = 0.02;
     inner.userData.videoSrc = videoSrc;
+    inner.userData.videoIndex = this.FRAME_STAIRS.indexOf(stairIndex);
     group.add(inner);
 
     const innerEdges = new THREE.LineSegments(
@@ -418,50 +434,121 @@ window.Card5 = {
   },
 
   /**
-   * 초기 카메라 설정 — 아래에서 올려다보는 사선 구도
+   * 네모 캐릭터 생성
+   */
+  createCharacter() {
+    const group = new THREE.Group();
+
+    // 몸통 — 검정 네모
+    const bodyGeo = new THREE.BoxGeometry(0.7, 0.9, 0.7);
+    const bodyMat = new THREE.MeshBasicMaterial({ color: 0x1a1a1a });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 0.45;
+    group.add(body);
+
+    // 몸통 윤곽선
+    const bodyEdges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(bodyGeo),
+      new THREE.LineBasicMaterial({ color: 0x000000 }),
+    );
+    bodyEdges.position.y = 0.45;
+    group.add(bodyEdges);
+
+    // 눈 (흰색 점 2개)
+    const eyeGeo = new THREE.BoxGeometry(0.12, 0.12, 0.02);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+    leftEye.position.set(-0.15, 0.6, 0.36);
+    group.add(leftEye);
+    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+    rightEye.position.set(0.15, 0.6, 0.36);
+    group.add(rightEye);
+
+    this.characterMesh = group;
+    this.stairGroup.add(group);
+    this.updateCharacterPosition(0);
+  },
+
+  /**
+   * 캐릭터를 특정 계단 위치에 배치 (소수점 허용 — 보간)
+   */
+  updateCharacterPosition(step) {
+    if (!this.characterMesh) return;
+
+    const floorStep = Math.floor(step);
+    const frac = step - floorStep;
+
+    // 현재 계단과 다음 계단의 각도/높이 보간
+    const ang0 = ((floorStep + 0.5) * this.ANGLE_PER_STAIR * Math.PI) / 180;
+    const ang1 = ((floorStep + 1.5) * this.ANGLE_PER_STAIR * Math.PI) / 180;
+    const ang = ang0 + (ang1 - ang0) * frac;
+
+    const y0 = floorStep * this.STAIR_HEIGHT + this.STAIR_THICKNESS;
+    const y1 = (floorStep + 1) * this.STAIR_HEIGHT + this.STAIR_THICKNESS;
+    const baseY = y0 + (y1 - y0) * frac;
+
+    // 점프 포물선 (frac 기반)
+    const jumpArc = Math.sin(frac * Math.PI) * 1.2;
+
+    const midR = (this.INNER_RADIUS + this.OUTER_RADIUS) * 0.5;
+
+    this.characterMesh.position.set(
+      Math.cos(ang) * midR,
+      baseY + jumpArc,
+      Math.sin(ang) * midR,
+    );
+
+    // 캐릭터가 계단 올라가는 방향(접선)을 바라보도록 회전
+    this.characterMesh.rotation.y = -ang;
+  },
+
+  /**
+   * 초기 카메라 설정
    */
   setupCamera() {
-    // 계단 가까이, 낮은 위치에서 45° 대각선으로 올려다봄
-    const ang = Math.PI * 0.25;
-    const dist = 10;
-    this.camera.position.set(
-      Math.cos(ang) * dist,
-      2,
-      Math.sin(ang) * dist,
-    );
-    this.camera.lookAt(0, 14, 0);
+    this.updateCamera();
   },
 
   updateCamera() {
-    const progress = this.scroll / this.maxScroll;
-    const totalH = this.TOTAL_STAIRS * this.STAIR_HEIGHT;
+    if (!this.characterMesh) return;
 
-    // 가까운 거리에서 올려다보며, 스크롤에 따라 계단을 따라 상승
-    const baseAngle = Math.PI * 0.25;
-    const camAngle = baseAngle + progress * Math.PI * 1.5;
-    const camDist = 10 + progress * 2;         // 가까운 거리 유지
-    const camHeight = 2 + progress * totalH * 0.6;  // 낮은 곳에서 시작
-    const lookHeight = camHeight + 12 + progress * 6; // 항상 위를 바라봄
+    const charPos = this.characterMesh.position;
+    const step = this.animStep;
+
+    // 캐릭터 진행 각도
+    const charAng = ((step + 0.5) * this.ANGLE_PER_STAIR * Math.PI) / 180;
+
+    // 카메라: 캐릭터 뒤쪽 사선에서 약간 위를 바라봄
+    const camOffsetAng = charAng - Math.PI * 0.35; // 캐릭터 뒤쪽-옆
+    const camDist = 14;
+    const camHeightOffset = 5;
 
     this.camera.position.set(
-      Math.cos(camAngle) * camDist,
-      camHeight,
-      Math.sin(camAngle) * camDist,
+      charPos.x + Math.cos(camOffsetAng) * camDist,
+      charPos.y + camHeightOffset,
+      charPos.z + Math.sin(camOffsetAng) * camDist,
     );
-    this.camera.lookAt(0, lookHeight, 0);
+
+    // 캐릭터 약간 위를 바라봄
+    this.camera.lookAt(
+      charPos.x,
+      charPos.y + 3,
+      charPos.z,
+    );
 
     // 진행률 표시
     if (this.progressEl) {
-      const floor = Math.floor(progress * this.TOTAL_STAIRS);
+      const floor = Math.floor(this.animStep) + 1;
       this.progressEl.textContent = `${floor}F`;
     }
 
     // Particles
-    if (this.scroll >= 85 && !this.hasExploded) {
+    const progress = this.animStep / (this.TOTAL_STAIRS - 1);
+    if (progress >= 0.85 && !this.hasExploded) {
       this.hasExploded = true;
       this.createParticles();
     }
-    if (this.scroll < 75) this.hasExploded = false;
+    if (progress < 0.75) this.hasExploded = false;
   },
 
   createParticles() {
@@ -482,28 +569,33 @@ window.Card5 = {
   },
 
   bindEvents() {
-    // Wheel
+    // Wheel — 한 칸씩 계단 이동
+    let wheelCooldown = false;
     this.card.addEventListener(
       "wheel",
       (e) => {
         if (!this.card.classList.contains("fullscreen")) return;
         e.preventDefault();
-        this.targetScroll = Utils.clamp(
-          this.targetScroll + (e.deltaY > 0 ? 2.5 : -2.5),
-          0,
-          this.maxScroll,
-        );
+        if (wheelCooldown) return;
+        wheelCooldown = true;
+        setTimeout(() => { wheelCooldown = false; }, 180);
+
+        const dir = e.deltaY > 0 ? 1 : -1;
+        this.targetStep = Math.max(0, Math.min(this.TOTAL_STAIRS - 1, this.targetStep + dir));
       },
       { passive: false },
     );
 
-    // Touch
+    // Touch — 한 칸씩 계단 이동
     let touchY = 0;
+    let touchAccum = 0;
     this.card.addEventListener(
       "touchstart",
       (e) => {
-        if (this.card.classList.contains("fullscreen"))
+        if (this.card.classList.contains("fullscreen")) {
           touchY = e.touches[0].clientY;
+          touchAccum = 0;
+        }
       },
       { passive: true },
     );
@@ -513,11 +605,13 @@ window.Card5 = {
         if (!this.card.classList.contains("fullscreen")) return;
         const dy = touchY - e.touches[0].clientY;
         touchY = e.touches[0].clientY;
-        this.targetScroll = Utils.clamp(
-          this.targetScroll + dy * 0.3,
-          0,
-          this.maxScroll,
-        );
+        touchAccum += dy;
+        const threshold = 30;
+        if (Math.abs(touchAccum) >= threshold) {
+          const steps = Math.round(touchAccum / threshold);
+          this.targetStep = Math.max(0, Math.min(this.TOTAL_STAIRS - 1, this.targetStep + steps));
+          touchAccum = 0;
+        }
       },
       { passive: true },
     );
@@ -531,7 +625,8 @@ window.Card5 = {
       this.raycaster.setFromCamera(this.mouse, this.camera);
       const hits = this.raycaster.intersectObjects(this.frameMeshes);
       if (hits.length > 0 && hits[0].object.userData.videoSrc) {
-        VideoPopup.open(hits[0].object.userData.videoSrc);
+        const idx = hits[0].object.userData.videoIndex || 0;
+        this.openVideoPopup(hits[0].object.userData.videoSrc, idx);
       }
     });
 
@@ -562,18 +657,78 @@ window.Card5 = {
   animate() {
     requestAnimationFrame(() => this.animate());
 
-    const diff = this.targetScroll - this.scroll;
+    // animStep을 targetStep 쪽으로 부드럽게 보간
+    const diff = this.targetStep - this.animStep;
     if (Math.abs(diff) > 0.01) {
-      this.scroll += diff * 0.07;
+      this.animStep += diff * 0.12;
     } else {
-      this.scroll = this.targetScroll;
+      this.animStep = this.targetStep;
     }
+
+    // 캐릭터 위치 업데이트
+    this.updateCharacterPosition(this.animStep);
 
     this.updateCamera();
     this.renderer.render(this.scene, this.camera);
   },
 
+  /**
+   * 비디오 팝업 생성 (DOM)
+   */
+  createPopupDOM() {
+    if (document.getElementById('c5-popup-overlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'c5-popup-overlay';
+    overlay.className = 'c5-popup-overlay';
+    overlay.innerHTML = `
+      <div class="c5-popup-card">
+        <button class="c5-popup-close">&times;</button>
+        <div class="c5-popup-left">
+          <video id="c5-popup-video" controls playsinline></video>
+        </div>
+        <div class="c5-popup-right">
+          <span class="c5-popup-chapter" id="c5-popup-chapter"></span>
+          <h2 class="c5-popup-title" id="c5-popup-title"></h2>
+          <p class="c5-popup-desc" id="c5-popup-desc"></p>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // 닫기 이벤트
+    overlay.querySelector('.c5-popup-close').addEventListener('click', () => this.closeVideoPopup());
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) this.closeVideoPopup();
+    });
+  },
+
+  openVideoPopup(src, index) {
+    this.createPopupDOM();
+    const overlay = document.getElementById('c5-popup-overlay');
+    const video = document.getElementById('c5-popup-video');
+    const info = this.VIDEO_INFO[index] || this.VIDEO_INFO[0];
+
+    video.src = src;
+    document.getElementById('c5-popup-chapter').textContent = `CHAPTER ${index + 1}`;
+    document.getElementById('c5-popup-title').textContent = info.title;
+    document.getElementById('c5-popup-desc').textContent = info.desc;
+
+    requestAnimationFrame(() => {
+      overlay.classList.add('active');
+      video.play().catch(() => {});
+    });
+  },
+
+  closeVideoPopup() {
+    const overlay = document.getElementById('c5-popup-overlay');
+    if (!overlay) return;
+    const video = document.getElementById('c5-popup-video');
+    if (video) { video.pause(); video.src = ''; }
+    overlay.classList.remove('active');
+  },
+
   closeVideo() {
-    VideoPopup.close();
+    this.closeVideoPopup();
   },
 };

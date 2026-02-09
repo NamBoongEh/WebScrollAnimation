@@ -1,46 +1,21 @@
-/* ===== Card 1 ===== */
+/* ===== Card 1: 충돌 감지 플립 카드 ===== */
 
-.human-image {
+/* 스캐터 컨테이너 */
+.scatter-container {
   position: absolute;
-  width: 5%;
-  min-width: 25px;
-  max-width: 45px;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: 50%;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  z-index: 20;
-  pointer-events: none;
-  /* 부드러운 이동을 위해 transition 제거 - JS에서 직접 제어 */
-}
-
-.card.fullscreen .human-image {
-  width: 4%;
-  min-width: 35px;
-  max-width: 70px;
-}
-
-.human-image:hover {
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-}
-
-.card1-scatter-container {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
+  inset: 0;
   z-index: 10;
   overflow: visible;
 }
 
-/* scatter-item이 grid-item 역할을 함 */
+/* 스캐터 아이템 크기 */
 .scatter-item {
   position: absolute;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   perspective: 1000px;
   cursor: pointer;
+  transition: width var(--transition);
 }
 
-/* 축소 상태 (70vw x 70vh 카드): 작은 크기 */
 .scatter-item[data-index="0"] { width: 16%; }
 .scatter-item[data-index="1"] { width: 13%; }
 .scatter-item[data-index="2"] { width: 18%; }
@@ -48,7 +23,6 @@
 .scatter-item[data-index="4"] { width: 17%; }
 .scatter-item[data-index="5"] { width: 14%; }
 
-/* fullscreen (100vw x 100vh): 비율 유지 */
 .card.fullscreen .scatter-item[data-index="0"] { width: 18%; }
 .card.fullscreen .scatter-item[data-index="1"] { width: 14%; }
 .card.fullscreen .scatter-item[data-index="2"] { width: 20%; }
@@ -56,79 +30,69 @@
 .card.fullscreen .scatter-item[data-index="4"] { width: 19%; }
 .card.fullscreen .scatter-item[data-index="5"] { width: 15%; }
 
-/* 카드 내부 구조 - 3D 플립용 래퍼 */
-.scatter-item .card-inner {
+/* 카드 플립 구조 */
+.card-inner {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 16/9;
   transform-style: preserve-3d;
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--transition);
 }
+.scatter-item.flipped .card-inner { transform: rotateY(180deg); }
 
-.scatter-item.flipped .card-inner {
-  transform: rotateY(180deg);
-}
-
-.scatter-item .grid-front,
-.scatter-item .grid-back {
+.card-front, .card-back {
   position: absolute;
-  width: 100%; height: 100%;
+  inset: 0;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+.card.fullscreen .card-front,
+.card.fullscreen .card-back { border-radius: 10px; }
 
-.card.fullscreen .scatter-item .grid-front,
-.card.fullscreen .scatter-item .grid-back {
-  border-radius: 10px;
+.card-front {
+  background: linear-gradient(135deg, #e0e5ec, #d0d5dc);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
-
-.scatter-item .grid-front {
-  background: linear-gradient(135deg, #e0e5ec 0%, #d0d5dc 100%);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.scatter-item .grid-back {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+.card-back {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   transform: rotateY(180deg);
-  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 2px 10px rgba(59,130,246,0.3);
 }
 
-.grid-button {
-  background: white; color: #3b82f6; border: none;
+/* 카드 버튼 */
+.card-btn {
+  background: var(--white);
+  color: var(--primary);
+  border: none;
   padding: 5px 10px;
   border-radius: 15px;
   font-size: 0.65rem;
-  font-weight: 600; cursor: pointer;
+  font-weight: 600;
+  cursor: pointer;
   transition: all 0.3s ease;
 }
+.card.fullscreen .card-btn { padding: 8px 16px; font-size: 0.85rem; }
+.card-btn:hover { background: #f0f0f0; transform: scale(1.05); }
 
-.card.fullscreen .grid-button {
-  padding: 8px 16px;
-  font-size: 0.85rem;
+/* 사람 아바타 */
+.human-avatar {
+  position: absolute;
+  width: 5%;
+  min-width: 25px;
+  max-width: 45px;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 50%;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  z-index: 20;
+  pointer-events: none;
 }
-
-.grid-button:hover { background: #f0f0f0; transform: scale(1.05); }
-
-/* Card1 팝업 */
-.popup-overlay {
-  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 2000; opacity: 0; visibility: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+.card.fullscreen .human-avatar {
+  width: 4%;
+  min-width: 35px;
+  max-width: 70px;
 }
-.popup-overlay.active { opacity: 1; visibility: visible; }
-
-.popup-content {
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-  border-radius: 24px; padding: clamp(30px, 5vw, 60px) clamp(25px, 4vw, 50px);
-  max-width: min(500px, 85vw); width: 90%; text-align: center;
-  transform: scale(0.8) translateY(50px);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.3);
-}
-.popup-overlay.active .popup-content { transform: scale(1) translateY(0); }
-.popup-content h2 { font-size: clamp(1.4rem, 3vw, 2rem); color: #1a1a1a; margin-bottom: 20px; }
-.popup-content p { font-size: clamp(0.9rem, 1.5vw, 1.1rem); color: #6b7280; margin-bottom: 30px; }

@@ -424,4 +424,5 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.Card1) Card1.init();
   if (window.Card2) Card2.init();
   if (window.Card5) Card5.init();
+  if (window.Card6) Card6.init();
 });

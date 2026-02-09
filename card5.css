@@ -1,12 +1,10 @@
-/* ===== Card 5 - Three.js 나선형 계단 ===== */
+/* ===== Card 5: Three.js 나선형 계단 ===== */
 
 /* three-container가 카드 전체를 채우도록 */
 #three-container {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
   overflow: hidden;
   border-radius: 24px;
   transition: border-radius 0.6s cubic-bezier(0.4, 0, 0.2, 1);
@@ -22,7 +20,7 @@
 .card.fullscreen #three-container { border-radius: 0; }
 .card.shrinking #three-container { border-radius: 24px; }
 
-/* 진행률 */
+/* 진행률 표시 (Card5) */
 #floor-indicator-5 {
   position: absolute;
   bottom: clamp(60px, 10vh, 100px);
@@ -39,34 +37,129 @@
 
 .card.fullscreen #floor-indicator-5 { display: block; }
 
-/* Card5 비디오 팝업 */
-.c5-video-popup {
+/* ===== 비디오 팝업 — 좌: 영상 / 우: 제목+내용 ===== */
+.c5-popup-overlay {
   position: fixed;
   top: 0; left: 0;
   width: 100vw; height: 100vh;
-  background: rgba(0, 0, 0, 0.95);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 2000;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.4s ease;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
 }
 
-.c5-video-popup.active { opacity: 1; visibility: visible; }
+.c5-popup-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
 
-.c5-video-content {
+.c5-popup-card {
+  display: flex;
+  width: min(90vw, 900px);
+  max-height: 80vh;
+  background: #ffffff;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+  position: relative;
+  transform: translateY(30px) scale(0.95);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.c5-popup-overlay.active .c5-popup-card {
+  transform: translateY(0) scale(1);
+}
+
+.c5-popup-close {
+  position: absolute;
+  top: 16px; right: 20px;
+  width: 36px; height: 36px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 50%;
+  font-size: 20px;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: background 0.2s;
+}
+
+.c5-popup-close:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* 왼쪽: 비디오 */
+.c5-popup-left {
+  flex: 1.2;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+}
+
+.c5-popup-left video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 오른쪽: 제목 + 내용 */
+.c5-popup-right {
+  flex: 1;
+  padding: clamp(28px, 5vw, 48px);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: clamp(20px, 4vh, 30px);
+  justify-content: center;
+  gap: 16px;
 }
 
-#c5-video {
-  max-width: min(80vw, 900px);
-  max-height: 60vh;
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+.c5-popup-chapter {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #999;
+}
+
+.c5-popup-title {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 800;
+  color: #1a1a1a;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.c5-popup-desc {
+  font-size: clamp(0.9rem, 1.5vw, 1.05rem);
+  color: #555;
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* 모바일: 세로 배치 */
+@media (max-width: 680px) {
+  .c5-popup-card {
+    flex-direction: column;
+    width: 92vw;
+    max-height: 85vh;
+  }
+
+  .c5-popup-left {
+    min-height: 200px;
+    max-height: 40vh;
+  }
+
+  .c5-popup-right {
+    padding: 24px;
+  }
 }
