@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <title>■□□□□□</title>
+    <title>Card Stack</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="card1.css" />
     <link rel="stylesheet" href="card2.css" />
@@ -122,14 +122,46 @@
         <button class="close-btn">뒤로가기</button>
       </section>
 
-      <!-- Card 4: 빈 카드 -->
+      <!-- Card 4: Choo-Choo World 나무 기차 -->
       <section class="card" id="card-4">
         <h2 class="card-number">4</h2>
         <div id="train-container"></div>
+
+        <!-- 풀스크린 UI -->
+        <div class="c4-title c4-controls">
+          <div class="c4-title-text">
+            <span class="c4-title-emoji">🚂</span>
+            Choo-Choo World
+          </div>
+        </div>
+
+        <div class="c4-compass c4-controls">
+          <button class="c4-compass-btn" id="c4-rotate-btn" title="카메라 회전">
+            🧭
+          </button>
+        </div>
+
+        <div class="c4-dock c4-controls">
+          <button class="c4-dock-btn" id="c4-play-btn" title="재생/정지">
+            ⏸️
+          </button>
+          <button class="c4-dock-btn" id="c4-speed-btn" title="속도 조절">
+            🐢
+          </button>
+          <button class="c4-dock-btn" id="c4-daynight-btn" title="낮/밤 전환">
+            ☀️
+          </button>
+        </div>
+
+        <div class="c4-hint c4-controls">
+          <span class="c4-hint-text">Drag to rotate</span>
+          <span class="c4-hint-text">Scroll to zoom</span>
+        </div>
+
         <button class="close-btn">뒤로가기</button>
       </section>
 
-      <!-- Card 5: Three.js 나선 계단 -->
+      <!-- Card 5: Three.js 나선형 계단 -->
       <section class="card" id="card-5">
         <h2 class="card-number">5</h2>
         <div class="three-container" id="three-container"></div>

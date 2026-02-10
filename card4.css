@@ -1,25 +1,224 @@
-/* card4.css */
+/* ===== Card 4: Choo-Choo World 스타일 나무 기차 ===== */
+
 #card-4 {
-  /* 카드의 기본 속성 상속 */
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden; /* 튀어나오는 것 방지 */
-  background: #a0d8ef; /* 하늘색 배경 미리 지정 */
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #87CEEB;
 }
 
 #train-container {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
   display: block;
+  border-radius: 24px;
+  overflow: hidden;
+  transition: border-radius 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 닫기 버튼 등이 가려지지 않게 z-index 관리 */
-#card-4 .close-btn {
-  z-index: 10;
+#train-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
 }
-#card-4 .card-number {
-  z-index: 10;
+
+.card.fullscreen #train-container { border-radius: 0; }
+.card.shrinking #train-container { border-radius: 24px; }
+
+#card-4 .close-btn { z-index: 30; }
+#card-4 .card-number { z-index: 20; }
+
+/* ===== UI Controls ===== */
+.c4-controls {
+  position: absolute;
+  z-index: 25;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+.card.fullscreen .c4-controls {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 좌측 상단: 로고/타이틀 */
+.c4-title {
+  position: absolute;
+  top: 24px; left: 28px;
+  z-index: 25;
+  display: none;
+}
+
+.card.fullscreen .c4-title { display: flex; }
+
+.c4-title-text {
+  font-family: 'Georgia', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.c4-title-emoji {
+  font-size: 1.4rem;
+  animation: c4TrainBounce 2s ease-in-out infinite;
+}
+
+@keyframes c4TrainBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* 우측: 카메라 회전 컴파스 */
+.c4-compass {
+  position: absolute;
+  top: 50%;
+  right: 24px;
+  transform: translateY(-50%);
+  z-index: 25;
+}
+
+.c4-compass-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.c4-compass-btn:hover {
+  background: rgba(255,255,255,0.4);
+  transform: scale(1.08);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+}
+
+.c4-compass-btn:active {
+  transform: scale(0.95);
+}
+
+/* 하단 중앙: 컨트롤 독 */
+.c4-dock {
+  position: absolute;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 28px;
+  border: 1px solid rgba(255,255,255,0.3);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  z-index: 25;
+}
+
+.c4-dock-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.7);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.c4-dock-btn:hover {
+  background: rgba(255,255,255,0.95);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+}
+
+.c4-dock-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+/* 좌측 하단: 힌트 */
+.c4-hint {
+  position: absolute;
+  bottom: 90px;
+  left: 28px;
+  z-index: 25;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  animation: c4FadeInUp 0.6s ease both;
+  animation-delay: 1s;
+}
+
+.card.fullscreen .c4-hint { display: flex; }
+
+.c4-hint-text {
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+@keyframes c4FadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== 카드 축소 상태 오버레이 텍스트 ===== */
+.c4-preview-label {
+  position: absolute;
+  bottom: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Georgia', serif;
+  font-size: clamp(0.8rem, 2vw, 1.1rem);
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  text-align: center;
+  pointer-events: none;
+  z-index: 15;
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.card.fullscreen .c4-preview-label { opacity: 0; }
+
+/* ===== 반응형 ===== */
+@media (max-width: 768px) {
+  .c4-compass { right: 12px; }
+  .c4-compass-btn { width: 44px; height: 44px; font-size: 18px; }
+  
+  .c4-dock {
+    bottom: 80px;
+    gap: 6px;
+    padding: 6px 10px;
+  }
+  .c4-dock-btn { width: 38px; height: 38px; font-size: 16px; }
+  
+  .c4-title { top: 16px; left: 16px; }
+  .c4-title-text { font-size: 0.9rem; }
+  
+  .c4-hint { bottom: 80px; left: 16px; }
 }

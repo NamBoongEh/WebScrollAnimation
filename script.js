@@ -2,11 +2,11 @@
  * ========================================
  * script.js - Main Page Controller
  * ========================================
- * 카드 스택 네비게이션, 풀스크린, 패럴랙스, 팝업 관리
+ * ì¹´ë“œ ìŠ¤íƒ ë„¤ë¹„ê²Œì´ì…˜, í’€ìŠ¤í¬ë¦°, íŒ¨ëŸ´ëž™ìŠ¤, íŒì—… ê´€ë¦¬
  */
 
 // ========================================
-// Utils (전역 공유 - card*.js에서도 접근)
+// Utils (ì „ì—­ ê³µìœ  - card*.jsì—ì„œë„ ì ‘ê·¼)
 // ========================================
 var Utils = {
   $(selector) { return document.querySelector(selector); },
@@ -147,7 +147,7 @@ var App = {
   },
 
   updateTitle() {
-    document.title = this.cards.map((_, i) => i === this.current ? '■' : '□').join('');
+    document.title = 'Card ' + (this.current + 1) + ' / ' + this.cards.length;
   },
 
   bindEvents() {
@@ -235,7 +235,7 @@ var App = {
     this.scroll.targetY = this.scroll.targetZ = 0;
     this.scroll.targetScale = 1;
     this.scroll.amount = this.scroll.direction = 0;
-    // currentAmount/currentDirection은 lerp로 자연스럽게 0으로 수렴
+    // currentAmount/currentDirectionì€ lerpë¡œ ìžì—°ìŠ¤ëŸ½ê²Œ 0ìœ¼ë¡œ ìˆ˜ë ´
   },
 
   navigateTo(index) {
@@ -253,14 +253,14 @@ var App = {
     const transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
 
     if (direction === 'down') {
-      // 현재 카드는 뒤로 밀려남
+      // í˜„ìž¬ ì¹´ë“œëŠ” ë’¤ë¡œ ë°€ë ¤ë‚¨
       oldCard.style.transition = transition;
       oldCard.style.transform = 'translateZ(-100px) translateY(60%) scale(0.5)';
       oldCard.style.filter = 'brightness(0.9)';
       oldCard.style.zIndex = '5';
 
-      // 다음 카드: 스크롤 미리보기로 이미 일부 보이는 상태일 수 있음
-      // 현재 위치에서 바로 최종 위치로 이동 (초기 위치로 리셋하지 않음)
+      // ë‹¤ìŒ ì¹´ë“œ: ìŠ¤í¬ë¡¤ ë¯¸ë¦¬ë³´ê¸°ë¡œ ì´ë¯¸ ì¼ë¶€ ë³´ì´ëŠ” ìƒíƒœì¼ ìˆ˜ ìžˆìŒ
+      // í˜„ìž¬ ìœ„ì¹˜ì—ì„œ ë°”ë¡œ ìµœì¢… ìœ„ì¹˜ë¡œ ì´ë™ (ì´ˆê¸° ìœ„ì¹˜ë¡œ ë¦¬ì…‹í•˜ì§€ ì•ŠìŒ)
       newCard.style.visibility = 'visible';
       newCard.style.opacity = '1';
       newCard.style.zIndex = '15';
@@ -420,9 +420,10 @@ document.addEventListener('DOMContentLoaded', () => {
   Popup.init();
   VideoPopup.init();
 
-  // Card 모듈 초기화 (각 card*.js에서 window에 등록)
+  // Card ëª¨ë“ˆ ì´ˆê¸°í™” (ê° card*.jsì—ì„œ windowì— ë“±ë¡)
   if (window.Card1) Card1.init();
   if (window.Card2) Card2.init();
+  if (window.Card4) Card4.init();
   if (window.Card5) Card5.init();
   if (window.Card6) Card6.init();
 });
