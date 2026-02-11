@@ -156,6 +156,29 @@
   transform: translateY(0) scale(0.95);
 }
 
+/* 독 구분선 */
+.c4-dock-divider {
+  width: 1px;
+  height: 30px;
+  background: rgba(255,255,255,0.35);
+  align-self: center;
+  margin: 0 2px;
+}
+
+/* 칸 수 카운터 */
+.c4-wagon-counter {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  min-width: 36px;
+  justify-content: center;
+  user-select: none;
+}
+
 /* 좌측 하단: 힌트 */
 .c4-hint {
   position: absolute;

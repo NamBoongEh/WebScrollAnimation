@@ -416,6 +416,11 @@ var App = {
 // Initialize
 // ========================================
 document.addEventListener('DOMContentLoaded', () => {
+  // 우클릭 컨텍스트 메뉴 차단
+  document.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+  });
+
   App.init();
   Popup.init();
   VideoPopup.init();

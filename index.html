@@ -86,28 +86,22 @@
         <h2 class="card-number">2</h2>
         <div class="video-grid" id="video-grid">
           <div class="video-item size-lg" data-index="0">
-            <video src="Video/vid1.mp4" muted></video
-            ><span class="play-icon">▶</span>
+            <video src="Video/vid1.mp4" muted></video><span class="play-icon">▶</span>
           </div>
           <div class="video-item size-sm" data-index="1">
-            <video src="Video/vid2.mp4" muted></video
-            ><span class="play-icon">▶</span>
+            <video src="Video/vid2.mp4" muted></video><span class="play-icon">▶</span>
           </div>
           <div class="video-item size-md" data-index="2">
-            <video src="Video/vid3.mp4" muted></video
-            ><span class="play-icon">▶</span>
+            <video src="Video/vid3.mp4" muted></video><span class="play-icon">▶</span>
           </div>
           <div class="video-item size-sm" data-index="3">
-            <video src="Video/vid4.mp4" muted></video
-            ><span class="play-icon">▶</span>
+            <video src="Video/vid4.mp4" muted></video><span class="play-icon">▶</span>
           </div>
           <div class="video-item size-md" data-index="4">
-            <video src="Video/vid5.mp4" muted></video
-            ><span class="play-icon">▶</span>
+            <video src="Video/vid5.mp4" muted></video><span class="play-icon">▶</span>
           </div>
           <div class="video-item size-lg" data-index="5">
-            <video src="Video/vid6.mp4" muted></video
-            ><span class="play-icon">▶</span>
+            <video src="Video/vid6.mp4" muted></video><span class="play-icon">▶</span>
           </div>
         </div>
         <button class="close-btn">뒤로가기</button>
@@ -127,6 +121,9 @@
         <h2 class="card-number">4</h2>
         <div id="train-container"></div>
 
+        <!-- 미리보기 라벨 -->
+        <div class="c4-preview-label">🚂 Choo-Choo World</div>
+
         <!-- 풀스크린 UI -->
         <div class="c4-title c4-controls">
           <div class="c4-title-text">
@@ -136,21 +133,19 @@
         </div>
 
         <div class="c4-compass c4-controls">
-          <button class="c4-compass-btn" id="c4-rotate-btn" title="카메라 회전">
-            🧭
-          </button>
+          <button class="c4-compass-btn" id="c4-rotate-btn" title="카메라 회전">🧭</button>
         </div>
 
         <div class="c4-dock c4-controls">
-          <button class="c4-dock-btn" id="c4-play-btn" title="재생/정지">
-            ⏸️
-          </button>
-          <button class="c4-dock-btn" id="c4-speed-btn" title="속도 조절">
-            🐢
-          </button>
-          <button class="c4-dock-btn" id="c4-daynight-btn" title="낮/밤 전환">
-            ☀️
-          </button>
+          <button class="c4-dock-btn" id="c4-play-btn" title="재생/정지">⏸️</button>
+          <button class="c4-dock-btn" id="c4-speed-btn" title="속도 조절">🐢</button>
+          <button class="c4-dock-btn" id="c4-daynight-btn" title="낮/밤 전환">☀️</button>
+          <span class="c4-dock-divider"></span>
+          <button class="c4-dock-btn" id="c4-remove-wagon" title="칸 빼기">➖</button>
+          <span class="c4-wagon-counter"><span id="c4-wagon-count">3</span>🚃</span>
+          <button class="c4-dock-btn" id="c4-add-wagon" title="칸 추가">➕</button>
+          <span class="c4-dock-divider"></span>
+          <button class="c4-dock-btn" id="c4-horn-btn" title="경적 소리 ON/OFF">🔔</button>
         </div>
 
         <div class="c4-hint c4-controls">
