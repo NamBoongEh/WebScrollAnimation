@@ -21,6 +21,7 @@ window.Card4 = {
   trees: [],
   houses: [],
   sheep: [],
+  obstacleList: [],
   groundMesh: null,
   waterMesh: null,
   skyVehicle: null,
@@ -595,22 +596,65 @@ window.Card4 = {
     var colors = [0xE74C3C, 0xF39C12, 0x9B59B6, 0x1ABC9C, 0x3498DB];
     var balloonColor = colors[Math.floor(Math.random() * colors.length)];
 
-    // 풍선체 — 가로가 더 넓은 타원
+    // 풍선체 — 가로가 더 넓은 타원 (위로 올림)
     var envelope = new THREE.Mesh(
       new THREE.SphereGeometry(2.5, 12, 10),
       new THREE.MeshLambertMaterial({ color: balloonColor })
     );
     envelope.scale.set(1.6, 1.3, 1.6);
-    envelope.position.y = 3;
+    envelope.position.y = 5;
     g.add(envelope);
 
-    // 바구니
-    var basket = new THREE.Mesh(
-      new THREE.BoxGeometry(1.2, 0.8, 1.2),
-      new THREE.MeshLambertMaterial({ color: 0xC4944A })
+    // 풍선 하단 마감 (스커트)
+    var skirt = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.2, 0.6, 0.8, 8),
+      new THREE.MeshLambertMaterial({ color: balloonColor })
     );
-    basket.position.y = -0.5;
+    skirt.position.y = 5 - 2.5 * 1.3 + 0.2;
+    g.add(skirt);
+
+    // 로프 4개 — 풍선 하단에서 바구니 꼭짓점으로
+    var ropeMat = new THREE.LineBasicMaterial({ color: 0x8B7355, linewidth: 2 });
+    var envelopeBottom = 5 - 2.5 * 1.3; // ≈ 1.75
+    var basketTop = 0.5;
+    var corners = [[-0.5, -0.5], [-0.5, 0.5], [0.5, -0.5], [0.5, 0.5]];
+    corners.forEach(function(c) {
+      // 약간 곡선으로 — 3점 곡선
+      var pts = [];
+      var steps = 8;
+      for (var i = 0; i <= steps; i++) {
+        var f = i / steps;
+        var y = envelopeBottom + (basketTop - envelopeBottom) * f;
+        // 살짝 바깥으로 벌어지는 곡선
+        var spread = Math.sin(f * Math.PI) * 0.3;
+        pts.push(new THREE.Vector3(
+          c[0] * (0.8 + spread * 0.5 + f * 0.4),
+          y,
+          c[1] * (0.8 + spread * 0.5 + f * 0.4)
+        ));
+      }
+      var curve = new THREE.CatmullRomCurve3(pts);
+      var ropeGeo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(16));
+      g.add(new THREE.Line(ropeGeo, ropeMat));
+    });
+
+    // 바구니 — 좀 더 디테일
+    var basketMat = new THREE.MeshLambertMaterial({ color: 0xC4944A });
+    var basket = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.7, 0.55, 0.8, 8),
+      basketMat
+    );
+    basket.position.y = 0.1;
     g.add(basket);
+
+    // 바구니 테두리
+    var rim = new THREE.Mesh(
+      new THREE.TorusGeometry(0.7, 0.06, 6, 8),
+      new THREE.MeshLambertMaterial({ color: 0xA0784A })
+    );
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = 0.5;
+    g.add(rim);
 
     g.scale.setScalar(1.2);
     return g;
@@ -900,8 +944,9 @@ window.Card4 = {
     moonMesh.position.z = -1;
     this.moonGroup.add(moonMesh);
 
-    // 달 눈 — 초승달 표면에 배치 (z=1.5은 앞면, x=-2.7은 볼록 부분)
-    this.moonPupils = this._createCelestialEyes(this.moonGroup, 0.7, 0.8, 0.45, 0.3, -2.7, 1.5);
+    // 달 눈 — 초승달 앞면 표면에 배치
+    // moonMesh z=-1, extrude depth=2, bevel=0.3 → 앞면 z = -1+2+0.3 = 1.3
+    this.moonPupils = this._createCelestialEyes(this.moonGroup, 0.7, 0.8, 0.45, 0.3, -2.7, 1.32);
 
     this.moonGroup.position.set(-50, 35, -30);
     this.moonGroup.visible = false;
@@ -990,28 +1035,76 @@ window.Card4 = {
   },
 
   /* ==================== SHEEP ==================== */
+  buildObstacleList() {
+    this.obstacleList = [];
+    var self = this;
+
+    // 나무 (this.trees에 저장)
+    this.trees.forEach(function(tr) {
+      self.obstacleList.push({ x: tr.position.x, z: tr.position.z, r: 2.5 });
+    });
+
+    // 집
+    this.houses.forEach(function(h) {
+      self.obstacleList.push({ x: h.position.x, z: h.position.z, r: 5 });
+    });
+
+    // 풍차
+    this.obstacleList.push({ x: -35, z: -28, r: 4 });
+
+    // 기차역
+    var halfL = this.STRAIGHT_LEN / 2;
+    this.obstacleList.push({ x: halfL + this.CURVE_RADIUS + 5, z: 0, r: 8 });
+
+    // 연못/물
+    this.obstacleList.push({ x: -40, z: 30, r: 10 });
+
+    // 다리
+    this.obstacleList.push({ x: -37, z: 27, r: 3 });
+  },
+
   isNearTrack(x, z) {
-    // 트랙 경계 밖 마진 (철로에 접근하지 않도록)
     var margin = 5;
     var halfL = this.STRAIGHT_LEN / 2;
     var R = this.CURVE_RADIUS;
 
-    // 직선 구간 체크: z = -R 와 z = R 근처, x가 -halfL ~ halfL
+    // 직선 구간
     if (x >= -halfL - margin && x <= halfL + margin) {
       if (Math.abs(z - (-R)) < margin || Math.abs(z - R) < margin) return true;
     }
-
-    // 오른쪽 반원: center (halfL, 0), radius R
-    var dxR = x - halfL;
-    var dzR = z;
+    // 오른쪽 반원
+    var dxR = x - halfL, dzR = z;
     var distR = Math.sqrt(dxR * dxR + dzR * dzR);
     if (dxR > -margin && Math.abs(distR - R) < margin) return true;
-
-    // 왼쪽 반원: center (-halfL, 0), radius R
-    var dxL = x + halfL;
-    var dzL = z;
+    // 왼쪽 반원
+    var dxL = x + halfL, dzL = z;
     var distL = Math.sqrt(dxL * dxL + dzL * dzL);
     if (dxL < margin && Math.abs(distL - R) < margin) return true;
+
+    return false;
+  },
+
+  isBlocked(x, z, sheepIdx) {
+    // 철로
+    if (this.isNearTrack(x, z)) return true;
+
+    // 정적 장애물 (나무, 집, 풍차, 역, 연못)
+    for (var i = 0; i < this.obstacleList.length; i++) {
+      var ob = this.obstacleList[i];
+      var dx = x - ob.x, dz = z - ob.z;
+      if (dx * dx + dz * dz < ob.r * ob.r) return true;
+    }
+
+    // 다른 양
+    for (var j = 0; j < this.sheep.length; j++) {
+      if (j === sheepIdx) continue;
+      var other = this.sheep[j];
+      var dx2 = x - other.x, dz2 = z - other.z;
+      if (dx2 * dx2 + dz2 * dz2 < 4) return true; // 거리 2 이내
+    }
+
+    // 필드 경계
+    if (Math.abs(x) > 55 || Math.abs(z) > 55) return true;
 
     return false;
   },
@@ -1051,43 +1144,72 @@ window.Card4 = {
       g.add(ear);
     });
 
-    // 눈 (흰색 점)
-    var eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    [-0.12, 0.12].forEach(function(side) {
-      var eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 5, 4), eyeMat);
-      eye.position.set(1.42, 1.12, side);
-      g.add(eye);
+    // 눈 — 흰자
+    var eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    [-0.13, 0.13].forEach(function(side) {
+      var eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), eyeWhiteMat);
+      eyeWhite.position.set(1.42, 1.12, side);
+      g.add(eyeWhite);
     });
 
-    // 다리 (4개)
-    [[-0.5, -0.25], [-0.5, 0.25], [0.5, -0.25], [0.5, 0.25]].forEach(function(p) {
-      var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), legMat);
-      leg.position.set(p[0], 0.3, p[1]);
-      leg.castShadow = true;
-      g.add(leg);
+    // 눈 — 검은 눈동자
+    var pupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    [-0.13, 0.13].forEach(function(side) {
+      var pupil = new THREE.Mesh(new THREE.SphereGeometry(0.045, 5, 4), pupilMat);
+      pupil.position.set(1.47, 1.12, side);
+      g.add(pupil);
     });
+
+    // 다리 (4개) — 피벗 그룹으로 감싸서 걷기 애니메이션 가능
+    // 배치: [x, z] — +X가 머리 방향
+    var legPositions = [
+      { x: 0.5, z: -0.25, name: 'FL' },   // 앞왼
+      { x: 0.5, z: 0.25, name: 'FR' },    // 앞오른
+      { x: -0.5, z: -0.25, name: 'BL' },  // 뒤왼
+      { x: -0.5, z: 0.25, name: 'BR' }    // 뒤오른
+    ];
+    var legs = {};
+    legPositions.forEach(function(lp) {
+      var pivotGroup = new THREE.Group();
+      pivotGroup.position.set(lp.x, 0.6, lp.z); // 피벗: 다리 상단 (몸통 연결부)
+      var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), legMat);
+      leg.position.y = -0.3; // 피벗 아래로
+      leg.castShadow = true;
+      pivotGroup.add(leg);
+      g.add(pivotGroup);
+      legs[lp.name] = pivotGroup;
+    });
+    g.userData.legs = legs;
+
+    // 꼬리
+    var tail = new THREE.Mesh(new THREE.SphereGeometry(0.15, 5, 4), woolMat);
+    tail.position.set(-1.0, 1.0, 0);
+    g.add(tail);
 
     g.scale.setScalar(1.2);
     return g;
   },
 
   createSheep() {
+    // 장애물 목록 빌드 (나무, 집 등 모두 생성 후)
+    this.buildObstacleList();
+
     var count = 12;
     for (var i = 0; i < count; i++) {
       var attempts = 0;
       var x, z;
-      // 트랙 위가 아닌 위치 찾기
       do {
-        x = (Math.random() - 0.5) * 70;
-        z = (Math.random() - 0.5) * 70;
+        x = (Math.random() - 0.5) * 80;
+        z = (Math.random() - 0.5) * 80;
         attempts++;
-      } while (this.isNearTrack(x, z) && attempts < 50);
+      } while (this.isBlocked(x, z, -1) && attempts < 80);
 
-      if (attempts >= 50) continue;
+      if (attempts >= 80) continue;
 
       var mesh = this.createOneSheep();
+      var startAngle = Math.random() * Math.PI * 2;
       mesh.position.set(x, 0, z);
-      mesh.rotation.y = Math.random() * Math.PI * 2;
+      mesh.rotation.y = -startAngle;
       this.scene.add(mesh);
 
       this.sheep.push({
@@ -1096,26 +1218,35 @@ window.Card4 = {
         z: z,
         targetX: x,
         targetZ: z,
-        angle: mesh.rotation.y,
-        speed: 0.005 + Math.random() * 0.01,
+        angle: startAngle,
+        speed: 0.008 + Math.random() * 0.008,
         nextMoveTime: Math.random() * 5,
         isEating: false,
-        eatUntil: 0
+        eatUntil: 0,
+        isWalking: false
       });
     }
   },
 
   updateSheep(t) {
     var self = this;
-    this.sheep.forEach(function(s) {
-      // 풀 뜯기 중이면 가만히
+    this.sheep.forEach(function(s, idx) {
+      var legs = s.mesh.userData.legs;
+
+      // 풀 뜯기 중
       if (s.isEating) {
+        s.isWalking = false;
         if (t > s.eatUntil) {
           s.isEating = false;
           s.nextMoveTime = t + 0.5;
         }
-        // 고개 까딱
+        // 고개 까딱 (몸통 약간 기울임)
         s.mesh.children[0].position.y = 0.9 + Math.sin(t * 4) * 0.03;
+        // 다리 정지
+        if (legs) {
+          legs.FL.rotation.x = 0; legs.FR.rotation.x = 0;
+          legs.BL.rotation.x = 0; legs.BR.rotation.x = 0;
+        }
         return;
       }
 
@@ -1124,26 +1255,32 @@ window.Card4 = {
         var attempts = 0;
         var nx, nz;
         do {
-          var da = (Math.random() - 0.5) * Math.PI;
-          var dist = 3 + Math.random() * 8;
+          // 현재 바라보는 방향 전방 ±60도 범위에서 목적지 선택 (앞으로만)
+          var da = (Math.random() - 0.5) * Math.PI * 0.7;
+          var dist = 4 + Math.random() * 10;
           nx = s.x + Math.cos(s.angle + da) * dist;
           nz = s.z + Math.sin(s.angle + da) * dist;
-          // 필드 경계 안에 유지
-          nx = Math.max(-50, Math.min(50, nx));
-          nz = Math.max(-50, Math.min(50, nz));
+          nx = Math.max(-52, Math.min(52, nx));
+          nz = Math.max(-52, Math.min(52, nz));
           attempts++;
-        } while (self.isNearTrack(nx, nz) && attempts < 20);
+        } while (self.isBlocked(nx, nz, idx) && attempts < 30);
 
-        if (attempts < 20) {
+        if (attempts < 30) {
           s.targetX = nx;
           s.targetZ = nz;
+        } else {
+          // 모든 방향 시도 실패 → 180도 회전
+          s.angle += Math.PI;
+          s.targetX = s.x + Math.cos(s.angle) * 5;
+          s.targetZ = s.z + Math.sin(s.angle) * 5;
         }
         s.nextMoveTime = t + 4 + Math.random() * 6;
 
-        // 20% 확률로 풀 뜯기
-        if (Math.random() < 0.2) {
+        // 25% 확률로 풀 뜯기
+        if (Math.random() < 0.25) {
           s.isEating = true;
           s.eatUntil = t + 2 + Math.random() * 3;
+          s.isWalking = false;
           return;
         }
       }
@@ -1153,31 +1290,51 @@ window.Card4 = {
       var dz = s.targetZ - s.z;
       var dist = Math.sqrt(dx * dx + dz * dz);
 
-      if (dist > 0.3) {
+      if (dist > 0.5) {
+        s.isWalking = true;
         var targetAngle = Math.atan2(dz, dx);
         // 부드러운 회전
         var angleDiff = targetAngle - s.angle;
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-        s.angle += angleDiff * 0.03;
+        s.angle += angleDiff * 0.04;
 
-        s.x += Math.cos(s.angle) * s.speed;
-        s.z += Math.sin(s.angle) * s.speed;
+        var newX = s.x + Math.cos(s.angle) * s.speed;
+        var newZ = s.z + Math.sin(s.angle) * s.speed;
 
-        // 트랙 충돌 체크 → 멈추기
-        if (self.isNearTrack(s.x, s.z)) {
-          s.x -= Math.cos(s.angle) * s.speed * 2;
-          s.z -= Math.sin(s.angle) * s.speed * 2;
+        // 충돌 체크
+        if (self.isBlocked(newX, newZ, idx)) {
+          // 충돌 시 멈추고 새 목적지 즉시 재설정
           s.targetX = s.x;
           s.targetZ = s.z;
-          s.nextMoveTime = t + 1;
+          s.nextMoveTime = t + 0.5;
+          s.isWalking = false;
+        } else {
+          s.x = newX;
+          s.z = newZ;
         }
 
         s.mesh.position.set(s.x, 0, s.z);
-        s.mesh.rotation.y = -s.angle + Math.PI;
+        // 머리(+X 로컬) 방향으로 회전
+        s.mesh.rotation.y = -s.angle;
 
-        // 걸음 애니메이션 (약간 좌우 흔들림)
-        s.mesh.rotation.z = Math.sin(t * 3) * 0.03;
+        // 다리 걷기 애니메이션 — 대각선 쌍이 교차
+        if (legs && s.isWalking) {
+          var swing = Math.sin(t * 6) * 0.35;
+          legs.FL.rotation.x = swing;     // 앞왼
+          legs.BR.rotation.x = swing;     // 뒤오른 (같은 쌍)
+          legs.FR.rotation.x = -swing;    // 앞오른
+          legs.BL.rotation.x = -swing;    // 뒤왼 (같은 쌍)
+        }
+      } else {
+        s.isWalking = false;
+        // 목적지 도달 → 다리 정지
+        if (legs) {
+          legs.FL.rotation.x *= 0.9;
+          legs.FR.rotation.x *= 0.9;
+          legs.BL.rotation.x *= 0.9;
+          legs.BR.rotation.x *= 0.9;
+        }
       }
     });
   },
