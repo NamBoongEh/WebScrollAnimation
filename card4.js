@@ -52,8 +52,12 @@ window.Card4 = {
   targetPhi: Math.PI / 3.2,
   targetRadius: 75,
   camAngleIndex: 0,
+  panX: 0, panZ: 0,
+  targetPanX: 0, targetPanZ: 0,
   isPaused: false,
   isMobile: false,
+  sheepRaycaster: null,
+  sheepMouse: null,
 
   // Oval Track
   STRAIGHT_LEN: 22,
@@ -186,12 +190,18 @@ window.Card4 = {
     this.scene.add(this.ambientLight);
     this.hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x7EC850, 0.6);
     this.scene.add(this.hemiLight);
+    // 태양 위치(60, 28, -40)와 일치시켜 자연스러운 그림자
     this.dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    this.dirLight.position.set(30, 60, 30);
+    this.dirLight.position.set(60, 28, -40);
     this.dirLight.castShadow = true;
     this.dirLight.shadow.mapSize.set(2048, 2048);
+    this.dirLight.shadow.bias = -0.001;
+    this.dirLight.shadow.normalBias = 0.02;
     var sc = this.dirLight.shadow.camera;
-    sc.near = 1; sc.far = 200; sc.left = sc.bottom = -70; sc.right = sc.top = 70;
+    sc.near = 0.5; sc.far = 250; sc.left = sc.bottom = -90; sc.right = sc.top = 90;
+    // 그림자 타겟을 씬 중앙으로
+    this.dirLight.target.position.set(0, 0, 0);
+    this.scene.add(this.dirLight.target);
     this.scene.add(this.dirLight);
   },
 
@@ -613,24 +623,54 @@ window.Card4 = {
     skirt.position.y = 5 - 2.5 * 1.3 + 0.2;
     g.add(skirt);
 
+    // 불꽃 (스커트 아래) — 여러 겹의 불꽃 표현
+    var fireGroup = new THREE.Group();
+    var fireY = 5 - 2.5 * 1.3 - 0.2;
+    // 외부 불꽃 (주황)
+    var outerFlame = new THREE.Mesh(
+      new THREE.ConeGeometry(0.35, 1.2, 6),
+      new THREE.MeshBasicMaterial({ color: 0xFF6600, transparent: true, opacity: 0.9 })
+    );
+    outerFlame.position.y = fireY;
+    fireGroup.add(outerFlame);
+    // 내부 불꽃 (노랑)
+    var innerFlame = new THREE.Mesh(
+      new THREE.ConeGeometry(0.2, 0.8, 6),
+      new THREE.MeshBasicMaterial({ color: 0xFFDD00, transparent: true, opacity: 0.95 })
+    );
+    innerFlame.position.y = fireY + 0.05;
+    fireGroup.add(innerFlame);
+    // 핵심 불꽃 (흰색)
+    var coreFlame = new THREE.Mesh(
+      new THREE.ConeGeometry(0.1, 0.5, 4),
+      new THREE.MeshBasicMaterial({ color: 0xFFFFCC })
+    );
+    coreFlame.position.y = fireY + 0.1;
+    fireGroup.add(coreFlame);
+    // 포인트라이트 (불빛 효과)
+    var fireLight = new THREE.PointLight(0xFF6600, 0.8, 8);
+    fireLight.position.y = fireY;
+    fireGroup.add(fireLight);
+    g.add(fireGroup);
+    g.userData.fireGroup = fireGroup;
+    g.userData.fireY = fireY;
+
     // 로프 4개 — 풍선 하단에서 바구니 꼭짓점으로
     var ropeMat = new THREE.LineBasicMaterial({ color: 0x8B7355, linewidth: 2 });
-    var envelopeBottom = 5 - 2.5 * 1.3; // ≈ 1.75
-    var basketTop = 0.5;
-    var corners = [[-0.5, -0.5], [-0.5, 0.5], [0.5, -0.5], [0.5, 0.5]];
+    var envelopeBottom = 5 - 2.5 * 1.3;
+    var basketTop = -0.2;
+    var corners = [[-0.9, -0.9], [-0.9, 0.9], [0.9, -0.9], [0.9, 0.9]];
     corners.forEach(function(c) {
-      // 약간 곡선으로 — 3점 곡선
       var pts = [];
       var steps = 8;
       for (var i = 0; i <= steps; i++) {
         var f = i / steps;
         var y = envelopeBottom + (basketTop - envelopeBottom) * f;
-        // 살짝 바깥으로 벌어지는 곡선
         var spread = Math.sin(f * Math.PI) * 0.3;
         pts.push(new THREE.Vector3(
-          c[0] * (0.8 + spread * 0.5 + f * 0.4),
+          c[0] * (0.8 + spread * 0.5 + f * 0.6),
           y,
-          c[1] * (0.8 + spread * 0.5 + f * 0.4)
+          c[1] * (0.8 + spread * 0.5 + f * 0.6)
         ));
       }
       var curve = new THREE.CatmullRomCurve3(pts);
@@ -638,23 +678,50 @@ window.Card4 = {
       g.add(new THREE.Line(ropeGeo, ropeMat));
     });
 
-    // 바구니 — 좀 더 디테일
+    // 바구니 — 크게
     var basketMat = new THREE.MeshLambertMaterial({ color: 0xC4944A });
     var basket = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.7, 0.55, 0.8, 8),
+      new THREE.CylinderGeometry(1.5, 1.2, 1.6, 10),
       basketMat
     );
-    basket.position.y = 0.1;
+    basket.position.y = -1.0;
+    basket.castShadow = true;
     g.add(basket);
 
     // 바구니 테두리
     var rim = new THREE.Mesh(
-      new THREE.TorusGeometry(0.7, 0.06, 6, 8),
+      new THREE.TorusGeometry(1.5, 0.1, 6, 10),
       new THREE.MeshLambertMaterial({ color: 0xA0784A })
     );
     rim.rotation.x = Math.PI / 2;
-    rim.position.y = 0.5;
+    rim.position.y = -0.2;
     g.add(rim);
+
+    // 바구니 바닥 테두리
+    var rimBottom = new THREE.Mesh(
+      new THREE.TorusGeometry(1.2, 0.08, 6, 10),
+      new THREE.MeshLambertMaterial({ color: 0xA0784A })
+    );
+    rimBottom.rotation.x = Math.PI / 2;
+    rimBottom.position.y = -1.8;
+    g.add(rimBottom);
+
+    // 바구니 세로줄 (짜임 표현)
+    var weaveM = new THREE.LineBasicMaterial({ color: 0x9A7B4F });
+    for (var wi = 0; wi < 8; wi++) {
+      var wa = (wi / 8) * Math.PI * 2;
+      var wPts = [];
+      for (var wj = 0; wj <= 6; wj++) {
+        var wf = wj / 6;
+        var wy = -0.2 + (-1.6) * wf;
+        var wr = 1.5 + (1.2 - 1.5) * wf;
+        wPts.push(new THREE.Vector3(Math.cos(wa) * wr, wy, Math.sin(wa) * wr));
+      }
+      var wLine = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(wPts), weaveM
+      );
+      g.add(wLine);
+    }
 
     g.scale.setScalar(1.2);
     return g;
@@ -675,9 +742,22 @@ window.Card4 = {
       ud.propeller.rotation.z += 0.5;
     }
 
-    // 열기구 약간 흔들림
+    // 열기구 약간 흔들림 + 불꽃 애니메이션
     if (this.skyVehicleType === 'balloon') {
       this.skyVehicle.position.y = ud.height + Math.sin(t * 0.4) * 1.5;
+      // 불꽃 깜빡임
+      if (this.skyVehicle.userData.fireGroup) {
+        var fg = this.skyVehicle.userData.fireGroup;
+        fg.children.forEach(function(c, i) {
+          if (c.isMesh) {
+            var flicker = 0.85 + Math.sin(t * 12 + i * 2.5) * 0.15;
+            c.scale.set(flicker, 0.8 + Math.sin(t * 15 + i) * 0.2, flicker);
+          }
+          if (c.isLight) {
+            c.intensity = 0.6 + Math.sin(t * 10) * 0.3;
+          }
+        });
+      }
     }
 
     // 중심에서 너무 멀어지면 제거 후 새로 생성
@@ -920,33 +1000,40 @@ window.Card4 = {
     this.sunGroup.position.set(60, 28, -40);
     this.scene.add(this.sunGroup);
 
-    // === MOON (초승달 — Shape 기반) ===
+    // === MOON (보름달 — 구체) ===
     this.moonGroup = new THREE.Group();
 
-    // 초승달 형상: 바깥 원 - 안쪽 원 교차
-    var R = 4, r = 3.6, ox = 2.2;
-    var ix = (R * R + ox * ox - r * r) / (2 * ox);
-    var iy = Math.sqrt(Math.max(0, R * R - ix * ix));
+    var moonBody = new THREE.Mesh(
+      new THREE.SphereGeometry(4, 16, 12),
+      new THREE.MeshBasicMaterial({ color: 0xFFF8DC })
+    );
+    this.moonGroup.add(moonBody);
 
-    var outerStart = Math.atan2(-iy, ix);
-    var outerEnd = Math.atan2(iy, ix);
+    // 달 크레이터 (어두운 점 몇 개)
+    var craterMat = new THREE.MeshBasicMaterial({ color: 0xE8DCC8 });
+    var craters = [
+      { x: -1.2, y: 0.8, z: 3.5, r: 0.6 },
+      { x: 1.5, y: -0.5, z: 3.4, r: 0.5 },
+      { x: -0.3, y: -1.5, z: 3.6, r: 0.4 },
+      { x: 0.8, y: 1.5, z: 3.5, r: 0.35 },
+    ];
+    craters.forEach(function(c) {
+      var crater = new THREE.Mesh(new THREE.SphereGeometry(c.r, 6, 4), craterMat);
+      crater.position.set(c.x, c.y, c.z);
+      this.moonGroup.add(crater);
+    }.bind(this));
 
-    var moonShape = new THREE.Shape();
-    // 바깥 큰 호 (왼쪽으로 둘러가기)
-    moonShape.absarc(0, 0, R, outerStart, outerEnd, false);
-    // 안쪽 호 (오른쪽으로 되돌아오기)
-    var iStart = Math.atan2(iy, ix - ox);
-    var iEnd = Math.atan2(-iy, ix - ox);
-    moonShape.absarc(ox, 0, r, iStart, iEnd, true);
+    // 달 눈 (보름달 표면)
+    this.moonPupils = this._createCelestialEyes(this.moonGroup, 1.2, 0.8, 0.45, 0.3, 0, 3.6);
 
-    var moonGeo = new THREE.ExtrudeGeometry(moonShape, { depth: 2, bevelEnabled: true, bevelThickness: 0.3, bevelSize: 0.3, bevelSegments: 3 });
-    var moonMesh = new THREE.Mesh(moonGeo, new THREE.MeshBasicMaterial({ color: 0xFFF8DC }));
-    moonMesh.position.z = -1;
-    this.moonGroup.add(moonMesh);
-
-    // 달 눈 — 초승달 앞면 표면에 배치
-    // moonMesh z=-1, extrude depth=2, bevel=0.3 → 앞면 z = -1+2+0.3 = 1.3
-    this.moonPupils = this._createCelestialEyes(this.moonGroup, 0.7, 0.8, 0.45, 0.3, -2.7, 1.32);
+    // 달 미소
+    var moonSmile = new THREE.EllipseCurve(0, 0, 1.0, 0.5, 0, Math.PI, false, 0);
+    var moonSmileLine = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(moonSmile.getPoints(12)),
+      new THREE.LineBasicMaterial({ color: 0xBBAA88, linewidth: 2 })
+    );
+    moonSmileLine.position.set(0, -1.2, 4.1);
+    this.moonGroup.add(moonSmileLine);
 
     this.moonGroup.position.set(-50, 35, -30);
     this.moonGroup.visible = false;
@@ -1067,26 +1154,37 @@ window.Card4 = {
     var margin = 5;
     var halfL = this.STRAIGHT_LEN / 2;
     var R = this.CURVE_RADIUS;
-
-    // 직선 구간
     if (x >= -halfL - margin && x <= halfL + margin) {
       if (Math.abs(z - (-R)) < margin || Math.abs(z - R) < margin) return true;
     }
-    // 오른쪽 반원
     var dxR = x - halfL, dzR = z;
     var distR = Math.sqrt(dxR * dxR + dzR * dzR);
     if (dxR > -margin && Math.abs(distR - R) < margin) return true;
-    // 왼쪽 반원
     var dxL = x + halfL, dzL = z;
     var distL = Math.sqrt(dxL * dxL + dzL * dzL);
     if (dxL < margin && Math.abs(distL - R) < margin) return true;
+    return false;
+  },
 
+  isInsideTrackOval(x, z) {
+    var halfL = this.STRAIGHT_LEN / 2;
+    var R = this.CURVE_RADIUS;
+    var margin = 3;
+    if (x >= -halfL && x <= halfL) {
+      if (Math.abs(z) < R - margin) return true;
+    } else if (x < -halfL) {
+      var dx = x + halfL, dz = z;
+      if (Math.sqrt(dx * dx + dz * dz) < R - margin) return true;
+    } else {
+      var dx = x - halfL, dz = z;
+      if (Math.sqrt(dx * dx + dz * dz) < R - margin) return true;
+    }
     return false;
   },
 
   isBlocked(x, z, sheepIdx) {
-    // 철로
     if (this.isNearTrack(x, z)) return true;
+    if (this.isInsideTrackOval(x, z)) return true;
 
     // 정적 장애물 (나무, 집, 풍차, 역, 연못)
     for (var i = 0; i < this.obstacleList.length; i++) {
@@ -1223,7 +1321,11 @@ window.Card4 = {
         nextMoveTime: Math.random() * 5,
         isEating: false,
         eatUntil: 0,
-        isWalking: false
+        isWalking: false,
+        isDancing: false,
+        hat: null,
+        mirrorBall: null,
+        mirrorLight: null
       });
     }
   },
@@ -1233,6 +1335,100 @@ window.Card4 = {
     this.sheep.forEach(function(s, idx) {
       var legs = s.mesh.userData.legs;
 
+      // 댄스 모드: 뒤로 걷기 (문워크)
+      if (s.isDancing) {
+        s.isEating = false;
+        s.isWalking = true;
+
+        // 미러볼 회전 + 빛 반사 효과
+        if (s.mirrorBall) {
+          s.mirrorBall.rotation.y += 0.05;
+          s.mirrorBall.rotation.x = Math.sin(t * 2) * 0.1;
+          // 타일+스파클 반짝임 (회전에 따라 빛 반사)
+          s.mirrorBall.children.forEach(function(c, ci) {
+            if (c.userData && c.userData.isSparkle) {
+              // 스파클: 회전 각도에 따라 밝기 변화 (빛 반사 시뮬레이션)
+              var bright = 0.3 + Math.sin(t * 12 + ci * 1.2) * 0.5 + Math.cos(t * 7 + ci * 0.9) * 0.3;
+              if (bright > 0.6) {
+                var hue = ((t * 0.4 + ci * 0.02) % 1);
+                c.material.color.setHSL(hue, 0.8, 0.9);
+                c.scale.setScalar(1.0 + bright * 0.5);
+              } else {
+                c.material.color.setRGB(0.9, 0.9, 0.9);
+                c.scale.setScalar(0.8);
+              }
+            } else if (c.isMesh && c.material && c.material.emissive) {
+              // 타일: emissive 변화로 메탈릭 반짝임
+              var flash = Math.sin(t * 15 + ci * 0.7) * 0.5 + 0.5;
+              if (flash > 0.7) {
+                c.material.emissive.setHSL((t * 0.3 + ci * 0.01) % 1, 0.6, 0.3 * flash);
+              } else {
+                c.material.emissive.setRGB(0.15, 0.15, 0.15);
+              }
+            }
+          });
+        }
+        if (s.mirrorLight) {
+          s.mirrorLight.intensity = 0.5 + Math.sin(t * 8) * 0.3;
+          // 빛 색상 변화 (디스코)
+          var hue = (t * 0.5) % 1;
+          s.mirrorLight.color.setHSL(hue, 1.0, 0.6);
+        }
+
+        // 새 목적지 결정 (뒤로)
+        if (t > s.nextMoveTime) {
+          var attempts = 0;
+          var nx, nz;
+          do {
+            // 뒤쪽 방향으로 목적지 (현재 바라보는 반대 ±40도)
+            var da = (Math.random() - 0.5) * Math.PI * 0.45;
+            var dist = 4 + Math.random() * 8;
+            nx = s.x + Math.cos(s.angle + Math.PI + da) * dist;
+            nz = s.z + Math.sin(s.angle + Math.PI + da) * dist;
+            nx = Math.max(-52, Math.min(52, nx));
+            nz = Math.max(-52, Math.min(52, nz));
+            attempts++;
+          } while (self.isBlocked(nx, nz, idx) && attempts < 30);
+          if (attempts < 30) { s.targetX = nx; s.targetZ = nz; }
+          else { s.angle += Math.PI; s.targetX = s.x + Math.cos(s.angle + Math.PI) * 5; s.targetZ = s.z + Math.sin(s.angle + Math.PI) * 5; }
+          s.nextMoveTime = t + 3 + Math.random() * 4;
+        }
+
+        // 뒤로 이동 (머리는 앞, 몸은 뒤로)
+        var dx = s.targetX - s.x, dz = s.targetZ - s.z;
+        var dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist > 0.5) {
+          // 머리를 목적지 반대쪽으로 향함 (= 원래 진행방향 유지, 뒤로 걷기)
+          var moveAngle = Math.atan2(dz, dx);
+          var headAngle = moveAngle + Math.PI; // 머리는 반대
+          var angleDiff = headAngle - s.angle;
+          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+          s.angle += angleDiff * 0.04;
+
+          var newX = s.x + Math.cos(moveAngle) * s.speed * 0.7; // 뒤로는 좀 느리게
+          var newZ = s.z + Math.sin(moveAngle) * s.speed * 0.7;
+          if (!self.isBlocked(newX, newZ, idx)) { s.x = newX; s.z = newZ; }
+          else { s.nextMoveTime = t + 0.5; }
+        } else {
+          s.nextMoveTime = t + 0.3;
+        }
+
+        s.mesh.position.set(s.x, 0, s.z);
+        s.mesh.rotation.y = -s.angle;
+
+        // 다리: 역방향 걷기 (문워크 느낌)
+        if (legs) {
+          var swing = Math.sin(t * 8) * 0.4; // 더 빠르게
+          legs.FL.rotation.z = -swing;  // 반대
+          legs.BR.rotation.z = -swing;
+          legs.FR.rotation.z = swing;
+          legs.BL.rotation.z = swing;
+        }
+        return;
+      }
+
+      // === 일반 모드 ===
       // 풀 뜯기 중
       if (s.isEating) {
         s.isWalking = false;
@@ -1244,8 +1440,8 @@ window.Card4 = {
         s.mesh.children[0].position.y = 0.9 + Math.sin(t * 4) * 0.03;
         // 다리 정지
         if (legs) {
-          legs.FL.rotation.x = 0; legs.FR.rotation.x = 0;
-          legs.BL.rotation.x = 0; legs.BR.rotation.x = 0;
+          legs.FL.rotation.z = 0; legs.FR.rotation.z = 0;
+          legs.BL.rotation.z = 0; legs.BR.rotation.z = 0;
         }
         return;
       }
@@ -1318,25 +1514,164 @@ window.Card4 = {
         // 머리(+X 로컬) 방향으로 회전
         s.mesh.rotation.y = -s.angle;
 
-        // 다리 걷기 애니메이션 — 대각선 쌍이 교차
+        // 다리 걷기 애니메이션 — 대각선 쌍이 교차 (앞뒤 스윙)
         if (legs && s.isWalking) {
           var swing = Math.sin(t * 6) * 0.35;
-          legs.FL.rotation.x = swing;     // 앞왼
-          legs.BR.rotation.x = swing;     // 뒤오른 (같은 쌍)
-          legs.FR.rotation.x = -swing;    // 앞오른
-          legs.BL.rotation.x = -swing;    // 뒤왼 (같은 쌍)
+          legs.FL.rotation.z = swing;
+          legs.BR.rotation.z = swing;
+          legs.FR.rotation.z = -swing;
+          legs.BL.rotation.z = -swing;
         }
       } else {
         s.isWalking = false;
-        // 목적지 도달 → 다리 정지
         if (legs) {
-          legs.FL.rotation.x *= 0.9;
-          legs.FR.rotation.x *= 0.9;
-          legs.BL.rotation.x *= 0.9;
-          legs.BR.rotation.x *= 0.9;
+          legs.FL.rotation.z *= 0.9;
+          legs.FR.rotation.z *= 0.9;
+          legs.BL.rotation.z *= 0.9;
+          legs.BR.rotation.z *= 0.9;
         }
       }
     });
+  },
+
+  /* ==================== SHEEP DANCE (Moonwalk) ==================== */
+  toggleSheepDance(sheepIdx) {
+    var s = this.sheep[sheepIdx];
+    if (!s) return;
+
+    s.isDancing = !s.isDancing;
+
+    if (s.isDancing) {
+      // === 댄스 모드 ON ===
+      s.isEating = false;
+
+      // 마이클잭슨 모자 (페도라) — 검정 챙 넓은 모자
+      var hatGroup = new THREE.Group();
+      // 모자 크라운 (윗부분)
+      var crown = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.22, 0.28, 0.3, 8),
+        new THREE.MeshLambertMaterial({ color: 0x111111 })
+      );
+      crown.position.y = 0.15;
+      hatGroup.add(crown);
+      // 모자 탑 (약간 오목)
+      var top = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.2, 0.22, 0.05, 8),
+        new THREE.MeshLambertMaterial({ color: 0x1a1a1a })
+      );
+      top.position.y = 0.3;
+      hatGroup.add(top);
+      // 챙 (넓고 납작)
+      var brim = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.45, 0.45, 0.04, 12),
+        new THREE.MeshLambertMaterial({ color: 0x111111 })
+      );
+      brim.position.y = 0.0;
+      hatGroup.add(brim);
+      // 리본 밴드
+      var band = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.285, 0.285, 0.05, 8),
+        new THREE.MeshLambertMaterial({ color: 0x333333 })
+      );
+      band.position.y = 0.05;
+      hatGroup.add(band);
+
+      // 머리 위에 배치 (로컬 좌표: 머리는 x=1.1, y=1.05)
+      hatGroup.position.set(1.1, 1.5, 0);
+      hatGroup.rotation.z = -0.15; // 약간 기울임 (멋지게)
+      s.mesh.add(hatGroup);
+      s.hat = hatGroup;
+
+      // 미러볼 (양 위에) — 은색 메탈릭 디스코볼
+      var mirrorBallGroup = new THREE.Group();
+
+      // 기본 구체 — 고광택 은색 메탈
+      var ballGeo = new THREE.SphereGeometry(0.6, 32, 24);
+      var ballMat = new THREE.MeshPhongMaterial({
+        color: 0xd0d0d0,
+        specular: 0xffffff,
+        shininess: 300,
+        reflectivity: 1.0,
+        emissive: 0x222222
+      });
+      var ball = new THREE.Mesh(ballGeo, ballMat);
+      mirrorBallGroup.add(ball);
+
+      // 미러 타일 (격자형 작은 사각형) — 진짜 디스코볼처럼
+      var tileRows = 12;
+      var tileMat = new THREE.MeshPhongMaterial({
+        color: 0xe8e8e8,
+        specular: 0xffffff,
+        shininess: 500,
+        emissive: 0x333333
+      });
+      for (var row = 1; row < tileRows; row++) {
+        var phi = (row / tileRows) * Math.PI;
+        var rowR = Math.sin(phi) * 0.62;
+        var rowY = Math.cos(phi) * 0.62;
+        var tileCols = Math.max(4, Math.floor(16 * Math.sin(phi)));
+        for (var col = 0; col < tileCols; col++) {
+          var theta = (col / tileCols) * Math.PI * 2;
+          var tileGeo = new THREE.PlaneGeometry(0.12, 0.08);
+          var tile = new THREE.Mesh(tileGeo, tileMat.clone());
+          tile.position.set(
+            rowR * Math.cos(theta),
+            rowY,
+            rowR * Math.sin(theta)
+          );
+          // 타일이 구 표면 법선 방향을 바라보도록
+          tile.lookAt(tile.position.clone().multiplyScalar(2));
+          mirrorBallGroup.add(tile);
+        }
+      }
+
+      // 반짝이 하이라이트 점 (밝은 스파클)
+      var sparkleGeo = new THREE.SphereGeometry(0.03, 3, 2);
+      for (var fi = 0; fi < 50; fi++) {
+        var spPhi = Math.acos(1 - 2 * (fi + 0.5) / 50);
+        var spTheta = Math.PI * (1 + Math.sqrt(5)) * fi;
+        var sparkle = new THREE.Mesh(sparkleGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        sparkle.position.set(
+          0.64 * Math.sin(spPhi) * Math.cos(spTheta),
+          0.64 * Math.sin(spPhi) * Math.sin(spTheta),
+          0.64 * Math.cos(spPhi)
+        );
+        sparkle.userData.isSparkle = true;
+        mirrorBallGroup.add(sparkle);
+      }
+
+      // 줄 (미러볼 매달기)
+      var wireGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0.6, 0),
+        new THREE.Vector3(0, 1.8, 0)
+      ]);
+      mirrorBallGroup.add(new THREE.Line(wireGeo, new THREE.LineBasicMaterial({ color: 0x888888 })));
+
+      mirrorBallGroup.position.set(0, 3.5, 0); // 양 위 높이
+      s.mesh.add(mirrorBallGroup);
+      s.mirrorBall = mirrorBallGroup;
+
+      // 미러볼 전용 스포트라이트 (위에서 비춰 반사광 효과)
+      var spotLight = new THREE.SpotLight(0xffffff, 1.2, 15, Math.PI / 4, 0.5);
+      spotLight.position.set(0, 5.5, 0);
+      spotLight.target = ball;
+      s.mesh.add(spotLight);
+
+      // 미러볼 조명 (디스코 라이트 — 여러 색상)
+      var mirrorLight = new THREE.PointLight(0xff00ff, 1.0, 15);
+      mirrorLight.position.set(0, 3.5, 0);
+      s.mesh.add(mirrorLight);
+      s.mirrorLight = mirrorLight;
+      s.spotLight = spotLight;
+
+    } else {
+      // === 댄스 모드 OFF ===
+      if (s.hat) { s.mesh.remove(s.hat); s.hat = null; }
+      if (s.mirrorBall) { s.mesh.remove(s.mirrorBall); s.mirrorBall = null; }
+      if (s.mirrorLight) { s.mesh.remove(s.mirrorLight); s.mirrorLight = null; }
+      if (s.spotLight) { s.mesh.remove(s.spotLight); s.spotLight = null; }
+      s.nextMoveTime = 0;
+    }
   },
 
   /* ==================== CAMERA ==================== */
@@ -1344,10 +1679,12 @@ window.Card4 = {
     this.camTheta += (this.targetTheta - this.camTheta) * .08;
     this.camPhi += (this.targetPhi - this.camPhi) * .05;
     this.camRadius += (this.targetRadius - this.camRadius) * .08;
+    this.panX += (this.targetPanX - this.panX) * .08;
+    this.panZ += (this.targetPanZ - this.panZ) * .08;
     var y = this.camRadius * Math.cos(this.camPhi);
     var hD = this.camRadius * Math.sin(this.camPhi);
-    this.camera.position.set(hD*Math.sin(this.camTheta), y, hD*Math.cos(this.camTheta));
-    this.camera.lookAt(0, 0, 0);
+    this.camera.position.set(hD*Math.sin(this.camTheta) + this.panX, y, hD*Math.cos(this.camTheta) + this.panZ);
+    this.camera.lookAt(this.panX, 0, this.panZ);
   },
 
   /* ==================== TRAIN HORN ==================== */
@@ -1458,6 +1795,7 @@ window.Card4 = {
       this.hemiLight.intensity = .2;
       this.dirLight.intensity = .3;
       this.dirLight.color.set(0x8888ff);
+      this.dirLight.position.set(-50, 35, -30); // 달 위치에서 비춤
       this.houses.forEach(function(h) { h.traverse(function(c) {
         if (c.userData && c.userData.isWindow && c.material) {
           c.material.color.set(0xFFD700);
@@ -1477,6 +1815,7 @@ window.Card4 = {
       this.hemiLight.intensity = .6;
       this.dirLight.intensity = .8;
       this.dirLight.color.set(0xffffff);
+      this.dirLight.position.set(60, 28, -40); // 태양 위치
       this.houses.forEach(function(h) { h.traverse(function(c) {
         if (c.userData && c.userData.isWindow && c.material) {
           c.material.color.set(self.C.houseWindow);
@@ -1529,11 +1868,14 @@ window.Card4 = {
       if (hornBtn) hornBtn.textContent = self.hornEnabled ? '🔔' : '🔕';
     });
 
-    // 마우스 추적 (눈동자용) + 드래그 회전
-    var dragging = false, ds = {x:0, y:0};
+    // 마우스 추적 (눈동자용) + 드래그: 왼쪽=이동, 오른쪽=회전
+    var dragging = false, dragBtn = -1, ds = {x:0, y:0};
+    this.sheepRaycaster = new THREE.Raycaster();
+    this.sheepMouse = new THREE.Vector2();
+
     this.container.addEventListener('mousedown', function(e) {
       if (!self.card.classList.contains('fullscreen')) return;
-      dragging = true; ds = {x:e.clientX, y:e.clientY};
+      dragging = true; dragBtn = e.button; ds = {x:e.clientX, y:e.clientY};
     });
     window.addEventListener('mousemove', function(e) {
       var rect = self.container.getBoundingClientRect();
@@ -1541,11 +1883,48 @@ window.Card4 = {
       self.mouseNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
       if (!dragging || !self.card.classList.contains('fullscreen')) return;
-      self.targetTheta -= (e.clientX - ds.x) * .005;
-      self.targetPhi = Math.max(.3, Math.min(Math.PI/2.2, self.targetPhi + (e.clientY - ds.y) * .003));
+      var ddx = e.clientX - ds.x, ddy = e.clientY - ds.y;
+      if (dragBtn === 0) {
+        // 왼쪽 드래그: 팬 (카메라 방향 기준)
+        var panSpeed = self.camRadius * 0.008;
+        self.targetPanX -= (ddx * Math.cos(self.camTheta) + ddy * Math.sin(self.camTheta) * Math.cos(self.camPhi)) * panSpeed * 0.01;
+        self.targetPanZ += (ddx * Math.sin(self.camTheta) - ddy * Math.cos(self.camTheta) * Math.cos(self.camPhi)) * panSpeed * 0.01;
+        // 범위 제한
+        self.targetPanX = Math.max(-60, Math.min(60, self.targetPanX));
+        self.targetPanZ = Math.max(-60, Math.min(60, self.targetPanZ));
+      } else if (dragBtn === 2) {
+        // 오른쪽 드래그: 회전
+        self.targetTheta -= ddx * .005;
+        self.targetPhi = Math.max(.3, Math.min(Math.PI/2.2, self.targetPhi + ddy * .003));
+      }
       ds = {x:e.clientX, y:e.clientY};
     });
-    window.addEventListener('mouseup', function() { dragging = false; });
+    window.addEventListener('mouseup', function() { dragging = false; dragBtn = -1; });
+
+    // 양 클릭 감지
+    this.container.addEventListener('click', function(e) {
+      if (!self.card.classList.contains('fullscreen')) return;
+      var rect = self.container.getBoundingClientRect();
+      self.sheepMouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      self.sheepMouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      self.sheepRaycaster.setFromCamera(self.sheepMouse, self.camera);
+
+      // 양 메쉬 모으기
+      var sheepMeshes = [];
+      self.sheep.forEach(function(s) {
+        s.mesh.traverse(function(c) { if (c.isMesh) sheepMeshes.push(c); });
+      });
+      var hits = self.sheepRaycaster.intersectObjects(sheepMeshes);
+      if (hits.length > 0) {
+        // 어떤 양인지 찾기
+        var hitObj = hits[0].object;
+        for (var si = 0; si < self.sheep.length; si++) {
+          var found = false;
+          self.sheep[si].mesh.traverse(function(c) { if (c === hitObj) found = true; });
+          if (found) { self.toggleSheepDance(si); break; }
+        }
+      }
+    });
 
     // 줌 (마우스 휠)
     this.container.addEventListener('wheel', function(e) {
@@ -1554,7 +1933,7 @@ window.Card4 = {
       self.targetRadius = Math.max(30, Math.min(120, self.targetRadius + e.deltaY * .05));
     }, { passive: false });
 
-    // Touch: 드래그 회전 + 핀치 줌
+    // Touch: 1핑거=이동, 2핑거=줌
     var ts = null, td = 0;
     this.container.addEventListener('touchstart', function(e) {
       if (!self.card.classList.contains('fullscreen')) return;
@@ -1564,8 +1943,12 @@ window.Card4 = {
     this.container.addEventListener('touchmove', function(e) {
       if (!self.card.classList.contains('fullscreen')) return;
       if (e.touches.length === 1 && ts) {
-        self.targetTheta -= (e.touches[0].clientX - ts.x) * .008;
-        self.targetPhi = Math.max(.3, Math.min(Math.PI/2.2, self.targetPhi + (e.touches[0].clientY - ts.y) * .005));
+        var ddx = e.touches[0].clientX - ts.x, ddy = e.touches[0].clientY - ts.y;
+        var panSpeed = self.camRadius * 0.012;
+        self.targetPanX -= (ddx * Math.cos(self.camTheta) + ddy * Math.sin(self.camTheta) * Math.cos(self.camPhi)) * panSpeed * 0.01;
+        self.targetPanZ += (ddx * Math.sin(self.camTheta) - ddy * Math.cos(self.camTheta) * Math.cos(self.camPhi)) * panSpeed * 0.01;
+        self.targetPanX = Math.max(-60, Math.min(60, self.targetPanX));
+        self.targetPanZ = Math.max(-60, Math.min(60, self.targetPanZ));
         ts = {x:e.touches[0].clientX, y:e.touches[0].clientY};
       } else if (e.touches.length === 2) {
         var nd = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
@@ -1575,6 +1958,9 @@ window.Card4 = {
     }, { passive: true });
 
     window.addEventListener('resize', function() { if (self.isInitialized) self.handleResize(); });
+
+    // 우클릭 메뉴 방지
+    this.container.addEventListener('contextmenu', function(e) { e.preventDefault(); });
   },
 
   /* ==================== RESIZE ==================== */
