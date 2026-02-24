@@ -1,0 +1,82 @@
+/* ===== Card 6: Three.js 기하학적 파티클 ===== */
+
+#three-container-6 {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  border-radius: 24px;
+  transition: border-radius 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #08080f;
+}
+
+#three-container-6 canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.card.fullscreen #three-container-6 { border-radius: 0; }
+.card.shrinking #three-container-6 { border-radius: 24px; }
+
+/* 페이즈 라벨 */
+#phase-indicator-6 {
+  position: absolute;
+  bottom: clamp(60px, 10vh, 100px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(0.7rem, 1.2vw, 0.85rem);
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgba(110, 142, 251, 0.6);
+  z-index: 20;
+  pointer-events: none;
+  display: none;
+  transition: color 0.4s ease;
+}
+
+.card.fullscreen #phase-indicator-6 { display: block; }
+
+/* 스크롤 힌트 */
+.c6-scroll-hint {
+  position: absolute;
+  bottom: clamp(18px, 4vh, 36px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 20;
+  pointer-events: none;
+  animation: c6Pulse 2.5s ease-in-out infinite;
+}
+
+.card.fullscreen .c6-scroll-hint { display: flex; }
+
+.c6-scroll-hint span {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+}
+
+.c6-scroll-hint::after {
+  content: '';
+  width: 1px;
+  height: 18px;
+  background: linear-gradient(to bottom, rgba(110,142,251,0.4), transparent);
+}
+
+@keyframes c6Pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* 모바일 */
+@media (max-width: 768px) {
+  #phase-indicator-6 {
+    bottom: clamp(50px, 8vh, 80px);
+  }
+}

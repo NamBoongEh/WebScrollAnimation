@@ -1,82 +1,241 @@
-/* ===== Card 6: Three.js 기하학적 파티클 ===== */
+/* ===== Card 6: Psych-Aurora & Interactive Nodes ===== */
 
 #three-container-6 {
   position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   border-radius: 24px;
-  transition: border-radius 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   background: #08080f;
+  transition: border-radius 0.6s ease;
+  cursor: default;
 }
 
-#three-container-6 canvas {
-  display: block;
-  width: 100% !important;
-  height: 100% !important;
+/* 풀스크린일 때 모서리 radius 제거 + 클릭 가능한 커서 */
+.card.fullscreen #three-container-6 {
+  border-radius: 0;
+  cursor: crosshair;
 }
 
-.card.fullscreen #three-container-6 { border-radius: 0; }
-.card.shrinking #three-container-6 { border-radius: 24px; }
+/* 축소 중일 때 radius 복원 애니메이션 */
+.card.shrinking #three-container-6 {
+  border-radius: 24px;
+}
 
-/* 페이즈 라벨 */
-#phase-indicator-6 {
+/* Aurora Background */
+#aurora-bg-6 {
   position: absolute;
-  bottom: clamp(60px, 10vh, 100px);
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.5;
+}
+
+.aurora-layer {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  background: radial-gradient(
+    circle at center,
+    var(--aurora-color, #6e8efb) 0%,
+    transparent 70%
+  );
+  filter: blur(80px);
+  animation: aurora-drift 15s infinite alternate ease-in-out;
+  mix-blend-mode: screen;
+}
+
+.aurora-layer:nth-child(2) {
+  animation-duration: 20s;
+  animation-delay: -5s;
+  opacity: 0.7;
+}
+.aurora-layer:nth-child(3) {
+  animation-duration: 25s;
+  animation-delay: -10s;
+  opacity: 0.5;
+}
+
+@keyframes aurora-drift {
+  from {
+    transform: translate(-10%, -10%) rotate(0deg);
+  }
+  to {
+    transform: translate(10%, 10%) rotate(10deg);
+  }
+}
+
+/* Background Formation Text */
+#parallax-text-6 {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10vw;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+  z-index: 5;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  transition: opacity 0.3s ease;
+  user-select: none;
+}
+
+/* High-Tech Tooltip */
+#node-tooltip-6 {
+  position: absolute;
+  z-index: 10000;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.85);
+  border-left: 3px solid var(--node-accent);
+  padding: 12px;
+  font-family: "Courier New", monospace;
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+#node-tooltip-6.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.typewriter {
+  color: #fff;
+  font-size: 13px;
+  margin: 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  width: 0;
+  border-right: 2px solid var(--node-accent);
+}
+
+/* Typing Animations */
+#node-tooltip-6.visible #tp-id {
+  animation: typing 0.5s steps(20, end) forwards 0.2s;
+}
+#node-tooltip-6.visible #tp-stat {
+  animation: typing 0.5s steps(20, end) forwards 0.6s;
+}
+#node-tooltip-6.visible #tp-sig {
+  animation: typing 0.5s steps(20, end) forwards 1s;
+}
+
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+    border-right-color: transparent;
+  }
+}
+
+/* 클릭 힌트 (풀스크린일 때만 표시) */
+.c6-click-hint {
+  position: absolute;
+  bottom: 90px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: clamp(0.7rem, 1.2vw, 0.85rem);
-  font-weight: 600;
-  letter-spacing: 0.25em;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(110, 142, 251, 0.6);
-  z-index: 20;
   pointer-events: none;
-  display: none;
-  transition: color 0.4s ease;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  z-index: 20;
 }
 
-.card.fullscreen #phase-indicator-6 { display: block; }
+.card.fullscreen .c6-click-hint {
+  opacity: 1;
+  animation: c6-fade-pulse 3s ease-in-out infinite;
+}
+
+@keyframes c6-fade-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
 
 /* 스크롤 힌트 */
 .c6-scroll-hint {
   position: absolute;
-  bottom: clamp(18px, 4vh, 36px);
+  bottom: 120px;
   left: 50%;
   transform: translateX(-50%);
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  z-index: 20;
-  pointer-events: none;
-  animation: c6Pulse 2.5s ease-in-out infinite;
-}
-
-.card.fullscreen .c6-scroll-hint { display: flex; }
-
-.c6-scroll-hint span {
-  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.7rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.25);
+  pointer-events: none;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.5s ease;
 }
 
-.c6-scroll-hint::after {
-  content: '';
-  width: 1px;
-  height: 18px;
-  background: linear-gradient(to bottom, rgba(110,142,251,0.4), transparent);
+.card.fullscreen .c6-scroll-hint {
+  opacity: 1;
 }
 
-@keyframes c6Pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
+.c6-scroll-hint span {
+  display: block;
+  animation: c6-scroll-bounce 2s ease-in-out infinite;
 }
 
-/* 모바일 */
+@keyframes c6-scroll-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* Phase Indicator */
+#phase-indicator-6 {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: "Courier New", monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card.fullscreen #phase-indicator-6 {
+  opacity: 1;
+}
+
+/* 반응형 */
 @media (max-width: 768px) {
-  #phase-indicator-6 {
-    bottom: clamp(50px, 8vh, 80px);
+  #parallax-text-6 {
+    font-size: 15vw;
+  }
+  
+  #node-tooltip-6 {
+    padding: 8px;
+    font-size: 11px;
+  }
+  
+  .typewriter {
+    font-size: 11px;
+  }
+  
+  .c6-click-hint,
+  .c6-scroll-hint {
+    font-size: 0.65rem;
   }
 }
