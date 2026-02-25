@@ -27,7 +27,7 @@
         <div class="c4-title c4-controls">
           <div class="c4-title-text">
             <span class="c4-title-emoji">🚂</span>
-            Track Builder
+            Choo-Choo World
           </div>
         </div>
         <div class="c4-compass c4-controls">
@@ -35,37 +35,69 @@
             🧭
           </button>
         </div>
-        
+
         <!-- 트랙 빌더 독 (좌측) -->
         <div class="c4-track-dock c4-controls">
           <div class="c4-track-dock-title">Track Builder</div>
           <div class="c4-track-btn-row">
             <!-- 직선 트랙 -->
-            <button class="c4-track-btn" id="c4-add-straight" title="직선 트랙 추가">
+            <button
+              class="c4-track-btn"
+              id="c4-add-straight"
+              title="직선 트랙 추가"
+            >
               <svg class="c4-track-icon" viewBox="0 0 32 32">
-                <line x1="4" y1="16" x2="28" y2="16"/>
-                <line x1="8" y1="12" x2="8" y2="20"/>
-                <line x1="16" y1="12" x2="16" y2="20"/>
-                <line x1="24" y1="12" x2="24" y2="20"/>
+                <line x1="4" y1="16" x2="28" y2="16" />
+                <line x1="8" y1="12" x2="8" y2="20" />
+                <line x1="16" y1="12" x2="16" y2="20" />
+                <line x1="24" y1="12" x2="24" y2="20" />
               </svg>
             </button>
             <!-- 좌측 커브 -->
-            <button class="c4-track-btn" id="c4-add-left" title="좌측 커브 추가">
+            <button
+              class="c4-track-btn"
+              id="c4-add-left"
+              title="좌측 커브 추가"
+            >
               <svg class="c4-track-icon" viewBox="0 0 32 32">
-                <path d="M4 28 Q4 4 28 4"/>
+                <path d="M4 28 Q4 4 28 4" />
               </svg>
             </button>
             <!-- 우측 커브 -->
-            <button class="c4-track-btn" id="c4-add-right" title="우측 커브 추가">
+            <button
+              class="c4-track-btn"
+              id="c4-add-right"
+              title="우측 커브 추가"
+            >
               <svg class="c4-track-icon" viewBox="0 0 32 32">
-                <path d="M28 28 Q28 4 4 4"/>
+                <path d="M28 28 Q28 4 4 4" />
               </svg>
             </button>
           </div>
           <div class="c4-track-btn-row">
             <!-- 트랙 삭제 -->
-            <button class="c4-track-btn remove" id="c4-remove-track" title="마지막 트랙 삭제">
+            <button
+              class="c4-track-btn remove"
+              id="c4-remove-track"
+              title="마지막 트랙 삭제"
+            >
               🗑️
+            </button>
+            <!-- 동굴 트랙 추가 -->
+            <button
+              class="c4-track-btn"
+              id="c4-add-tunnel"
+              title="동굴 트랙 추가"
+            >
+              ⛰️
+            </button>
+                        <!-- 호수 트랙 추가 -->
+            <button
+              class="c4-track-btn"
+              id="c4-add-pond"
+              title="호수 트랙 추가"
+            >
+              🏞️
             </button>
           </div>
           <div class="c4-track-counter">
@@ -99,6 +131,13 @@
           <button class="c4-dock-btn" id="c4-horn-btn" title="경적 소리 ON/OFF">
             🔔
           </button>
+          <button
+            class="c4-dock-btn"
+            id="c4-reset-train"
+            title="기차 위치 초기화"
+          >
+            🔄
+          </button>
         </div>
         <div class="c4-hint c4-controls">
           <span class="c4-hint-text">Drag to rotate</span>
@@ -116,6 +155,8 @@
         <div class="c6-click-hint">Click special nodes to interact</div>
         <button class="close-btn">뒤로가기</button>
       </section>
+
+      <section class="card"></section>
     </div>
 
     <nav class="indicator" id="indicator"></nav>
