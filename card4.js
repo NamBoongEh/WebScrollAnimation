@@ -34,8 +34,8 @@ window.Card4 = {
   trackSegments: [],
   trackGroup: null,
   stationGroup: null,
-  SEGMENT_LENGTH: 8,
-  CURVE_ANGLE: Math.PI / 4,
+  SEGMENT_LENGTH: 10,
+  CURVE_ANGLE: Math.PI / 2,
   CURVE_RADIUS: 10,
 
   // Horn
@@ -175,6 +175,7 @@ window.Card4 = {
 
     this.setupLights();
     this.createGround();
+    this.createBoundaryIndicator();
     this.createWater();
 
     this.trackGroup = new THREE.Group();
@@ -183,7 +184,6 @@ window.Card4 = {
     this.createStation();
 
     // 초기 트랙
-    this.addTrackSegment("straight");
     this.addTrackSegment("straight");
 
     this.createTrain();
@@ -232,8 +232,9 @@ window.Card4 = {
       const existing = this.trackSegments[i];
       const existingPoints = existing.points;
       const existingLen = existingPoints.length;
-      const existingStart = Math.floor(existingLen * 0.2);
-      const existingEnd = Math.floor(existingLen * 0.8);
+      // 첫 번째 세그먼트(역 연결쪽)는 시작부터 검사하여 역 방향 진입을 막음
+      const existingStart = (i === 0) ? 0 : Math.floor(existingLen * 0.2);
+      const existingEnd   = Math.floor(existingLen * 0.8);
 
       for (let k = checkStartIdx; k < newLen; k++) {
         const np = newPoints[k];
@@ -246,8 +247,29 @@ window.Card4 = {
       }
     }
 
-    for (const np of newPoints) {
-      if (Math.abs(np.x) > 100 || Math.abs(np.z) > 100) return true;
+    return false;
+  },
+
+  // 터널/호수 구조물과의 충돌 여부 반환
+  // - 새 세그먼트의 모든 점이 터널 언덕(r=hillR+1) 또는 호수(r=12) 안에 들어가면 충돌
+  // - 단, 터널/호수의 입구(startX/Z) 또는 출구(endX/Z) 에서 3유닛 이내인 점은 합법적 연결로 허용
+  checkTunnelPondOverlap(newSegment) {
+    for (const seg of this.trackSegments) {
+      if (!seg.tunnelObj) continue;
+      const cx = seg.tunnelObj.position.x;
+      const cz = seg.tunnelObj.position.z;
+      const r  = seg.tunnelType === "tunnel" ? 13 : 12; // 터널=언덕+여유, 호수=수면
+      const r2 = r * r;
+      for (const np of newSegment.points) {
+        const dx = np.x - cx, dz = np.z - cz;
+        if (dx * dx + dz * dz >= r2) continue; // 구역 밖 → 무시
+        // 입구/출구 연결 지점은 허용
+        const dsx = np.x - seg.startX, dsz = np.z - seg.startZ;
+        const dex = np.x - seg.endX,   dez = np.z - seg.endZ;
+        if (dsx * dsx + dsz * dsz < 9) continue; // 입구에서 3유닛 이내
+        if (dex * dex + dez * dez < 9) continue; // 출구에서 3유닛 이내
+        return true; // 구조물 내부 관통 → 충돌
+      }
     }
     return false;
   },
@@ -261,17 +283,49 @@ window.Card4 = {
     if (!segment) return;
 
     const first = this.trackSegments[0] || null;
-    const isClosingLoop =
+    // 루프 완성 조건: 위치 근접 + 진입 각도가 첫 트랙 시작 방향과 정확히 일치해야 함
+    const posClose =
       !!first &&
       this.trackSegments.length >= 2 &&
-      this.distance(segment.endX, segment.endZ, first.startX, first.startZ) <
-        0.8;
+      this.distance(segment.endX, segment.endZ, first.startX, first.startZ) < 0.8;
+    let angleMatch = false;
+    if (posClose) {
+      let da = (segment.endAngle - first.startAngle) % (2 * Math.PI);
+      if (da >  Math.PI) da -= 2 * Math.PI;
+      if (da < -Math.PI) da += 2 * Math.PI;
+      angleMatch = Math.abs(da) < 0.2; // ≈ 11.5° 이내만 허용
+    }
+    const isClosingLoop = posClose && angleMatch;
 
-    if (
-      !isClosingLoop &&
-      this.trackSegments.length >= 10 &&
-      this.checkTrackCollision(segment)
-    ) {
+    // 경계 범위 초과 체크 (세그먼트 수 무관하게 항상 실행)
+    if (!isClosingLoop) {
+      for (const np of segment.points) {
+        if (Math.abs(np.x) > 90 || Math.abs(np.z) > 90) {
+          console.log("Track out of bounds");
+          return;
+        }
+        // 기차역 플랫폼 충돌 체크 (실제 AABB, 여유 0.8 추가)
+        // plat BoxGeometry(10,0.4,5), local(0,0.2,-1.5), rotation π/2
+        // → 월드 x ∈ [-13.8, -7.2], z ∈ [-4.8, 6.8]
+        if (
+          np.x > -13.8 && np.x < -7.2 &&
+          np.z > -4.8  && np.z <  6.8
+        ) {
+          if (this.trackSegments.length >= 2) {
+            console.log("Track overlaps with station platform");
+            return;
+          }
+        }
+      }
+    }
+
+    // 세그먼트 수 무관하게 항상 터널/호수 충돌 체크
+    if (!isClosingLoop && this.checkTunnelPondOverlap(segment)) {
+      console.log("Track overlaps with tunnel/pond");
+      return;
+    }
+
+    if (!isClosingLoop && this.checkTrackCollision(segment)) {
       console.log("Track overlaps");
       return;
     }
@@ -282,6 +336,32 @@ window.Card4 = {
     this.hasReachedEnd = false;
     this.trackGroup.add(segment.mesh);
     this.updateTrackCounter();
+  },
+
+  removeAllTrackSegments() {
+    while (this.trackSegments.length > 1) {
+      const segment = this.trackSegments.pop();
+      this.trackGroup.remove(segment.mesh);
+      segment.mesh.traverse((child) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+      });
+      if (segment.tunnelObj) {
+        this.ducks = this.ducks.filter((d) => d.pondGroup !== segment.tunnelObj);
+        this.scene.remove(segment.tunnelObj);
+        segment.tunnelObj.traverse((child) => {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) child.material.dispose();
+        });
+        segment.tunnelObj = null;
+      }
+    }
+    this.isLoopClosed = false;
+    this.hasReachedEnd = false;
+    this.trainDistance = 2;
+    this.positionTrainOnTrack(true);
+    this.updateTrackCounter();
+    this.buildObstacleList();
   },
 
   removeLastTrackSegment() {
@@ -474,8 +554,8 @@ window.Card4 = {
       return;
     const beforeLen = this.trackSegments.length;
 
-    const tunnelLen = 25; // 터널의 길이
-    const hillR = 11; // 산 반구 반지름 (tunnelLen/2 보다 충분히 커야 함)
+    const tunnelLen = this.SEGMENT_LENGTH * 2; // 터널의 길이 (직선 2배 = 20)
+    const hillR = 12; // 산 반구 반지름 (faceX=10 보다 크고, 표면≈11.9 < blackLen/2=13)
     const holeR = 3; // 기차 통과 원통 구멍 반지름
 
     // 1. 트랙 생성 (기존 로직)
@@ -496,10 +576,10 @@ window.Card4 = {
     //   로컬 Y → 세계 Y (위쪽)
     //   로컬 Z → 트랙 좌우 방향
 
-    const faceX = tunnelLen / 2 - 2.5; // 8  – 세그먼트 절반 길이
-    const protrude = 0.01; // 검은 원통이 언덕 밖으로 나오는 길이
-    const portalX = faceX + protrude; // 11 – 벽돌 포탈 중심 x
-    const blackLen = tunnelLen - 3 * protrude; // 22 – 검은 원통 총 길이
+    const faceX = tunnelLen / 2; // 16 – 터널 끝 위치
+    const protrude = 3; // 검은 원통이 언덕 밖으로 나오는 길이 (hillR 표면 밖으로)
+    const portalX = faceX + protrude / 2; // 17.5 – 벽돌 포탈 중심 x
+    const blackLen = tunnelLen + 2 * protrude; // 38 – 검은 원통 총 길이 (양쪽 돌출 포함)
     const brickThick = 1.5; // 벽돌 원통 두께
     const brickLen = 5; // 벽돌 원통 길이
 
@@ -579,6 +659,7 @@ window.Card4 = {
     this.scene.add(tunnelObj);
 
     seg.tunnelObj = tunnelObj;
+    seg.tunnelType = "tunnel";
     this.buildObstacleList(); // 양이 터널 구역에 접근하지 못하도록 갱신
   },
 
@@ -588,7 +669,7 @@ window.Card4 = {
       return;
     const beforeLen = this.trackSegments.length;
 
-    const pondLen = 18; // 다리 트랙 세그먼트 길이
+    const pondLen = this.SEGMENT_LENGTH * 2; // 다리 트랙 세그먼트 길이 (직선 2배 = 20)
 
     // 1. 트랙 생성 (터널과 동일 방식)
     const origSegLen = this.SEGMENT_LENGTH;
@@ -645,7 +726,7 @@ window.Card4 = {
       pondObj.add(midRail);
 
       // 수직 기둥 (등간격)
-      const postCount = 9;
+      const postCount = 10;
       for (let p = 0; p <= postCount; p++) {
         const xPos = -pondLen / 2 + (pondLen / postCount) * p;
         const post = new THREE.Mesh(
@@ -774,6 +855,7 @@ window.Card4 = {
     this.scene.add(pondObj);
 
     seg.tunnelObj = pondObj;
+    seg.tunnelType = "pond";
     this.buildObstacleList(); // 양이 호수 구역에 접근하지 못하도록 갱신
   },
 
@@ -946,6 +1028,54 @@ window.Card4 = {
       s.scale.setScalar(0.5 + Math.random() * 0.8);
       this.scene.add(s);
     }
+  },
+
+  /* ==================== BOUNDARY INDICATOR ==================== */
+  createBoundaryIndicator() {
+    const B = 90; // 설치 가능 경계 (checkTrackCollision 기준값)
+    const size = B * 2;
+    const thick = 0.4;
+    const y = 0.07;
+
+    // 밝은 노란 선
+    this.boundaryMat = new THREE.MeshBasicMaterial({
+      color: 0xffee00,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    });
+    // 주황색 확산 후광
+    this.boundaryGlowMat = new THREE.MeshBasicMaterial({
+      color: 0xff8800,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    });
+
+    const group = new THREE.Group();
+    [
+      { w: size, d: thick,  px: 0,  pz:  B },
+      { w: size, d: thick,  px: 0,  pz: -B },
+      { w: thick, d: size,  px:  B, pz: 0  },
+      { w: thick, d: size,  px: -B, pz: 0  },
+    ].forEach(({ w, d, px, pz }) => {
+      const line = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 0.05, d),
+        this.boundaryMat,
+      );
+      line.position.set(px, y, pz);
+      group.add(line);
+
+      const glow = new THREE.Mesh(
+        new THREE.BoxGeometry(w + 1.5, 0.04, d + 1.5),
+        this.boundaryGlowMat,
+      );
+      glow.position.set(px, y - 0.01, pz);
+      group.add(glow);
+    });
+
+    this.scene.add(group);
+    this.boundaryGroup = group;
   },
 
   /* ==================== WATER ==================== */
@@ -1314,17 +1444,47 @@ window.Card4 = {
 
   /* ==================== SCENERY ==================== */
   createScenery() {
-    for (let i = 0; i < 30; i++) {
+    // 나무: 역/중심 주변(r<25) 제외하고 랜덤 배치
+    for (let i = 0; i < 70; i++) {
       const a = Math.random() * Math.PI * 2;
-      const d = 25 + Math.random() * 50;
+      const d = 25 + Math.random() * 63; // 25~88 범위
       this.createTree(Math.cos(a) * d, 0, Math.sin(a) * d);
     }
 
-    this.createHouse(35, 0, -25, this.C.houseRoof, 0);
-    this.createHouse(-30, 0, 25, this.C.houseRoofBlue, Math.PI / 3);
+    // 집: 고정 위치 4채
+    this.createHouse( 35, 0, -25, this.C.houseRoof,     0);
+    this.createHouse(-30, 0,  25, this.C.houseRoofBlue, Math.PI / 3);
+    this.createHouse( 55, 0,  40, this.C.houseRoof,     Math.PI / 5);
+    this.createHouse(-50, 0, -45, this.C.houseRoofBlue, -Math.PI / 4);
 
+    // 풍차: 고정 위치 2개
     this.createWindmill(-25, 0, -30);
+    this.createWindmill( 60, 0,  15);
+
     this.createFlowers();
+    this.createPebbles();
+  },
+
+  createPebbles() {
+    const stMat = new THREE.MeshLambertMaterial({ color: this.C.stoneGray });
+    for (let i = 0; i < 180; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = 20 + Math.random() * 68; // 20~88 범위 (역 주변 제외)
+      const geo = new THREE.CylinderGeometry(
+        0.15 + Math.random() * 0.2,
+        0.2  + Math.random() * 0.2,
+        0.07 + Math.random() * 0.06,
+        5,
+      );
+      const s = new THREE.Mesh(geo, stMat);
+      s.position.set(
+        Math.cos(a) * d + (Math.random() - 0.5),
+        0.04,
+        Math.sin(a) * d + (Math.random() - 0.5),
+      );
+      s.rotation.y = Math.random() * Math.PI;
+      this.scene.add(s);
+    }
   },
 
   createTree(x, y, z) {
@@ -1485,9 +1645,9 @@ window.Card4 = {
   createFlowers() {
     const colors = [0xff6b9d, 0xffd93d, 0xff6b35, 0xc44dff, 0xff4757];
     const sM = new THREE.MeshLambertMaterial({ color: 0x2ecc71 });
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 150; i++) {
       const a = Math.random() * Math.PI * 2;
-      const d = 15 + Math.random() * 30;
+      const d = 20 + Math.random() * 68; // 20~88 범위 (역 주변 제외)
       const f = new THREE.Group();
       const stem = new THREE.Mesh(
         new THREE.CylinderGeometry(0.03, 0.03, 0.4, 4),
@@ -1754,12 +1914,18 @@ window.Card4 = {
 
     // 터널 / 호수 세그먼트 (동적으로 트랙에 추가된 것들)
     this.trackSegments.forEach((seg) => {
-      if (seg.tunnelObj) {
-        this.obstacleList.push({
-          x: seg.tunnelObj.position.x,
-          z: seg.tunnelObj.position.z,
-          r: 12,
-        });
+      if (!seg.tunnelObj) return;
+      const cx = seg.tunnelObj.position.x;
+      const cz = seg.tunnelObj.position.z;
+      if (seg.tunnelType === "tunnel") {
+        // 반구 중심 (r = hillR + 1 여유)
+        this.obstacleList.push({ x: cx, z: cz, r: 13 });
+        // 입구/출구 포탈 영역 (벽돌이 isNearTrack 범위 밖까지 뻗어있음)
+        this.obstacleList.push({ x: seg.startX, z: seg.startZ, r: 6 });
+        this.obstacleList.push({ x: seg.endX,   z: seg.endZ,   r: 6 });
+      } else {
+        // 호수: 타원 수면 영역을 단일 원으로 근사
+        this.obstacleList.push({ x: cx, z: cz, r: 12 });
       }
     });
   },
@@ -2005,8 +2171,8 @@ window.Card4 = {
       do {
         // 트랙에서 떨어진 곳에서 생성 (x: 15~55 또는 -55~-15, z: -50~50)
         const side = Math.random() > 0.5 ? 1 : -1;
-        x = side * (15 + Math.random() * 40);
-        z = (Math.random() - 0.5) * 100;
+        x = side * (15 + Math.random() * 68); // 15~83 범위
+        z = (Math.random() - 0.5) * 175;     // ±87.5 범위
         attempts++;
       } while (this.isBlocked(x, z, -1) && attempts < 100);
 
@@ -2320,18 +2486,20 @@ window.Card4 = {
       const ctx = this.audioCtx;
       const now = ctx.currentTime;
 
-      [277, 349, 440].forEach((freq) => {
+      // 귀여운 기차 경적: 사인파 "toot-toot" (두 번, 피치 슬라이드 다운)
+      [[0, 880, 660], [0.38, 880, 660]].forEach(([delay, startFreq, endFreq]) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = "sawtooth";
-        osc.frequency.setValueAtTime(freq, now);
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.exponentialRampToValueAtTime(0.06, now + 0.06);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(startFreq, now + delay);
+        osc.frequency.linearRampToValueAtTime(endFreq, now + delay + 0.25);
+        gain.gain.setValueAtTime(0.001, now + delay);
+        gain.gain.exponentialRampToValueAtTime(0.12, now + delay + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.28);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.85);
+        osc.start(now + delay);
+        osc.stop(now + delay + 0.3);
       });
     } catch (e) {}
   },
@@ -2384,6 +2552,7 @@ window.Card4 = {
       this.trainDistance += this.trainSpeed;
       if (this.trainDistance > totalLength) {
         this.trainDistance -= totalLength;
+        this.playHorn(); // 한 바퀴 완주 → 경적
       }
     } else if (!this.hasReachedEnd) {
       this.trainDistance += this.trainSpeed;
@@ -2521,6 +2690,9 @@ window.Card4 = {
     });
     _btn("c4-add-pond", () => {
       this.addPondSegment();
+    });
+    _btn("c4-allremove-track", () => {
+      this.removeAllTrackSegments();
     });
 
     const hornBtn = _btn("c4-horn-btn", () => {
@@ -2754,6 +2926,23 @@ window.Card4 = {
     }
 
     this.updateCelestialEyes();
+
+    // 트랙 설치 경계선 표시 (트랙 끝이 경계 25유닛 이내에 접근하면 빛남)
+    if (this.boundaryMat) {
+      const end = this.getTrackEnd();
+      const nearBound = 90 - Math.max(Math.abs(end.x), Math.abs(end.z));
+      const show = !this.isLoopClosed && nearBound < 20;
+      if (show) {
+        const fade  = Math.max(0, Math.min(1, 1 - nearBound / 20));
+        const pulse = 0.5 + Math.sin(t * 5) * 0.45;
+        this.boundaryMat.opacity     = pulse * fade * 0.95;
+        this.boundaryGlowMat.opacity = pulse * fade * 0.4;
+      } else {
+        this.boundaryMat.opacity     = 0;
+        this.boundaryGlowMat.opacity = 0;
+      }
+    }
+
     this.renderer.render(this.scene, this.camera);
   },
 };

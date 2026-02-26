@@ -945,4 +945,20 @@ document.addEventListener("DOMContentLoaded", function () {
   setTimeout(function () {
     App.setCardActive(App.current, true);
   }, 100);
+
+  // 뮤트 버튼 토글
+  var muteBtn = document.getElementById("mute-btn");
+  var muteIcon = document.getElementById("mute-icon");
+  if (muteBtn) {
+    muteBtn.addEventListener("click", function () {
+      var isMuted = !muteBtn.classList.contains("unmuted");
+      if (isMuted) {
+        muteBtn.classList.add("unmuted");
+        if (muteIcon) muteIcon.textContent = "🔊";
+      } else {
+        muteBtn.classList.remove("unmuted");
+        if (muteIcon) muteIcon.textContent = "🔇";
+      }
+    });
+  }
 });
