@@ -103,14 +103,14 @@ body, html {
    ======================================== */
 .close-btn {
   position: absolute;
-  bottom: 40px; left: 50%;
+  bottom: 24px; left: 50%;
   transform: translateX(-50%);
   background: var(--primary);
   color: var(--white);
   border: none;
-  padding: 16px 48px;
+  padding: 8px 24px;
   border-radius: 50px;
-  font-size: 1rem;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 10px 30px rgba(59,130,246,0.3);

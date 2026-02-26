@@ -447,12 +447,18 @@ var ThreeStack = {
       obj.scale.setScalar(d.cScale);
 
       // Opacity lerp
+      var prevOpacity = d.cOpacity;
       d.cOpacity = Utils.lerp(d.cOpacity, d.tOpacity, speed);
-      obj.element.style.opacity = d.cOpacity;
+      if (Math.abs(d.cOpacity - prevOpacity) > 0.001) {
+        obj.element.style.opacity = d.cOpacity;
+      }
 
       // Brightness lerp
+      var prevBrightness = d.cBrightness;
       d.cBrightness = Utils.lerp(d.cBrightness, d.tBrightness, speed);
-      obj.element.style.filter = "brightness(" + d.cBrightness + ")";
+      if (Math.abs(d.cBrightness - prevBrightness) > 0.001) {
+        obj.element.style.filter = "brightness(" + d.cBrightness + ")";
+      }
 
       // 완전히 투명해지면 숨김
       if (!d.tVisible && d.cOpacity < 0.01) {
@@ -955,9 +961,17 @@ document.addEventListener("DOMContentLoaded", function () {
       if (isMuted) {
         muteBtn.classList.add("unmuted");
         if (muteIcon) muteIcon.textContent = "🔊";
+        // 현재 재생 중인 Card6 오디오 볼륨 복원
+        if (window.Card6 && window.Card6.positionalAudio) {
+          window.Card6.positionalAudio.setVolume(1.0);
+        }
       } else {
         muteBtn.classList.remove("unmuted");
         if (muteIcon) muteIcon.textContent = "🔇";
+        // 현재 재생 중인 Card6 오디오 음소거
+        if (window.Card6 && window.Card6.positionalAudio) {
+          window.Card6.positionalAudio.setVolume(0);
+        }
       }
     });
   }

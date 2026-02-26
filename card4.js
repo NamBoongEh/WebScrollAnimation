@@ -118,6 +118,10 @@ window.Card4 = {
 
   _wagonColors: null,
   _wagonColorIdx: 0,
+  _trackWoodMat: null,
+  _trackRailMat: null,
+  _boundAnimate: null,
+  _flatTrackPoints: [],
 
   init() {
     this.card = Utils.$("#card-4");
@@ -153,6 +157,9 @@ window.Card4 = {
     if (this.isInitialized) return;
     this.isInitialized = true;
     this.clock = new THREE.Clock();
+    this._boundAnimate = this.animate.bind(this);
+    this._trackWoodMat = new THREE.MeshLambertMaterial({ color: this.C.trackWood });
+    this._trackRailMat = new THREE.MeshLambertMaterial({ color: this.C.trackRail });
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(this.C.skyDay);
@@ -185,6 +192,7 @@ window.Card4 = {
 
     // 초기 트랙
     this.addTrackSegment("straight");
+    this._rebuildFlatTrackPoints();
 
     this.createTrain();
     this.createScenery();
@@ -335,6 +343,7 @@ window.Card4 = {
     if (isClosingLoop) this.isLoopClosed = true;
     this.hasReachedEnd = false;
     this.trackGroup.add(segment.mesh);
+    this._rebuildFlatTrackPoints();
     this.updateTrackCounter();
   },
 
@@ -360,6 +369,7 @@ window.Card4 = {
     this.hasReachedEnd = false;
     this.trainDistance = 2;
     this.positionTrainOnTrack(true);
+    this._rebuildFlatTrackPoints();
     this.updateTrackCounter();
     this.buildObstacleList();
   },
@@ -391,6 +401,7 @@ window.Card4 = {
 
     const totalLength = this.getTotalTrackLength();
     this.trainDistance = Math.min(this.trainDistance, totalLength - 2);
+    this._rebuildFlatTrackPoints();
     this.updateTrackCounter();
     this.buildObstacleList(); // 터널/호수 제거 후 양 장애물 목록 갱신
   },
@@ -458,8 +469,8 @@ window.Card4 = {
 
   createTrackMesh(segment) {
     const group = new THREE.Group();
-    const woodMat = new THREE.MeshLambertMaterial({ color: this.C.trackWood });
-    const railMat = new THREE.MeshLambertMaterial({ color: this.C.trackRail });
+    const woodMat = this._trackWoodMat;
+    const railMat = this._trackRailMat;
 
     const { type, startX, startZ, startAngle, endX, endZ } = segment;
 
@@ -1222,6 +1233,8 @@ window.Card4 = {
     w.traverse((child) => {
       const idx = this.trainWheels.indexOf(child);
       if (idx !== -1) this.trainWheels.splice(idx, 1);
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) child.material.dispose();
     });
     this.updateWagonCounter();
   },
@@ -1290,6 +1303,10 @@ window.Card4 = {
   spawnSkyVehicle() {
     if (this.skyVehicle) {
       this.scene.remove(this.skyVehicle);
+      this.skyVehicle.traverse((child) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+      });
       this.skyVehicle = null;
     }
     this.skyVehicleType = Math.random() > 0.5 ? "plane" : "balloon";
@@ -1886,6 +1903,7 @@ window.Card4 = {
       s.mesh.material.opacity = 0.5 * (1 - s.life / s.maxLife);
       if (s.life >= s.maxLife) {
         this.scene.remove(s.mesh);
+        s.mesh.geometry.dispose();
         s.mesh.material.dispose();
         this.smoke.splice(i, 1);
       }
@@ -1930,14 +1948,21 @@ window.Card4 = {
     });
   },
 
-  isNearTrack(x, z) {
-    // 트랙 근처인지 체크 (완화된 버전 - 3 이내)
+  _rebuildFlatTrackPoints() {
+    this._flatTrackPoints = [];
     for (const seg of this.trackSegments) {
       for (const pt of seg.points) {
-        const dx = x - pt.x;
-        const dz = z - pt.z;
-        if (dx * dx + dz * dz < 9) return true; // 3 이내
+        this._flatTrackPoints.push(pt);
       }
+    }
+  },
+
+  isNearTrack(x, z) {
+    // 트랙 근처인지 체크 (완화된 버전 - 3 이내)
+    for (const pt of this._flatTrackPoints) {
+      const dx = x - pt.x;
+      const dz = z - pt.z;
+      if (dx * dx + dz * dz < 9) return true; // 3 이내
     }
     return false;
   },
@@ -2889,7 +2914,7 @@ window.Card4 = {
   },
 
   animate() {
-    requestAnimationFrame(this.animate.bind(this));
+    requestAnimationFrame(this._boundAnimate);
 
     if (!this.isActive) {
       this.renderer.render(this.scene, this.camera);
