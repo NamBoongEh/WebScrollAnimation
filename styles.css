@@ -1,7 +1,25 @@
 /* ========================================
    Base Reset & Variables
    ======================================== */
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  /* iOS 길게 터치 시 시스템 callout(우클릭 메뉴) 차단 */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+canvas {
+  /* WebGL 캔버스: iOS callout 추가 차단 */
+  -webkit-touch-callout: none;
+}
+
+button {
+  touch-action: manipulation;
+}
 
 :root {
   --primary: #3b82f6;
@@ -10,15 +28,31 @@
   --gray: #6b7280;
   --light: #f5f7fa;
   --white: #ffffff;
-  --shadow: 0 40px 80px rgba(0,0,0,0.12), 0 10px 30px rgba(0,0,0,0.08);
+  --shadow: 0 40px 80px rgba(0, 0, 0, 0.12), 0 10px 30px rgba(0, 0, 0, 0.08);
   --transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-body, html {
+html {
   height: 100%;
+  height: -webkit-fill-available;
+  /* 핀치줌 CSS 차단 (pan만 허용) */
+  touch-action: pan-x pan-y;
+}
+
+body {
+  height: 100%;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  background: linear-gradient(135deg, var(--light) 0%, #e8ecf1 100%);
+  overscroll-behavior: none;
+  -webkit-overscroll-behavior: none;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial,
+    sans-serif;
+  background: linear-gradient(135deg, var(--light) 0%, black 100%);
+  /* iOS 터치 스크롤 부드럽게 */
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
 }
 
 /* ========================================
@@ -55,7 +89,8 @@ body, html {
 
 .card-number {
   position: absolute;
-  top: 50%; left: 50%;
+  top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%);
   font-size: 8rem;
   font-weight: 700;
@@ -86,8 +121,13 @@ body, html {
   -moz-transform: none !important;
   -ms-transform: none !important;
 }
-.card.fullscreen::-webkit-scrollbar { display: none; }
-.card.fullscreen .card-number { font-size: 15rem; opacity: 0.05; }
+.card.fullscreen::-webkit-scrollbar {
+  display: none;
+}
+.card.fullscreen .card-number {
+  font-size: 15rem;
+  opacity: 0.05;
+}
 
 /* ========================================
    Shrinking (풀스크린에서 돌아올 때)
@@ -103,31 +143,48 @@ body, html {
    ======================================== */
 .close-btn {
   position: absolute;
-  bottom: 24px; left: 50%;
+  bottom: max(24px, calc(16px + env(safe-area-inset-bottom)));
+  left: 50%;
   transform: translateX(-50%);
   background: var(--primary);
   color: var(--white);
   border: none;
-  padding: 8px 24px;
+  padding: 10px 28px;
   border-radius: 50px;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 10px 30px rgba(59,130,246,0.3);
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
   transition: all 0.3s ease;
   z-index: 10;
   opacity: 0;
   pointer-events: none;
+  /* 터치 최소 영역 보장 */
+  min-height: 44px;
+  min-width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.card.fullscreen .close-btn { opacity: 1; pointer-events: auto; }
-.close-btn:hover { background: var(--primary-dark); transform: translateX(-50%) translateY(-2px); }
+.card.fullscreen .close-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+.close-btn:hover {
+  background: var(--primary-dark);
+  transform: translateX(-50%) translateY(-2px);
+}
+.close-btn:active {
+  transform: translateX(-50%) scale(0.96);
+}
 
 /* ========================================
    Indicator
    ======================================== */
 .indicator {
   position: fixed;
-  right: 40px; top: 50%;
+  right: max(40px, calc(16px + env(safe-area-inset-right)));
+  top: 50%;
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
@@ -136,14 +193,21 @@ body, html {
 }
 
 .dot {
-  width: 12px; height: 12px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: #cbd5e1;
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.dot:hover { background: #94a3b8; transform: scale(1.2); }
-.dot.active { background: var(--primary); transform: scale(1.4); }
+.dot:hover {
+  background: #94a3b8;
+  transform: scale(1.2);
+}
+.dot.active {
+  background: var(--primary);
+  transform: scale(1.4);
+}
 
 /* ========================================
    Particles (공통)
@@ -162,17 +226,24 @@ body, html {
   animation: particleBurst 1.5s ease-out forwards;
 }
 @keyframes particleBurst {
-  0% { opacity: 1; transform: translate(0,0) scale(1); }
-  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--tx), var(--ty)) scale(0);
+  }
 }
 
 /* ========================================
    Popups (공통)
    ======================================== */
-.popup-overlay, .video-popup {
+.popup-overlay,
+.video-popup {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.8);
+  background: rgba(0, 0, 0, 0.8);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -182,7 +253,11 @@ body, html {
   visibility: hidden;
   transition: all 0.4s ease;
 }
-.popup-overlay.active, .video-popup.active { opacity: 1; visibility: visible; }
+.popup-overlay.active,
+.video-popup.active {
+  opacity: 1;
+  visibility: visible;
+}
 
 .popup-box {
   background: linear-gradient(135deg, var(--white), #f8f9fa);
@@ -192,11 +267,21 @@ body, html {
   text-align: center;
   transform: scale(0.8) translateY(50px);
   transition: all 0.4s ease;
-  box-shadow: 0 40px 80px rgba(0,0,0,0.3);
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.3);
 }
-.popup-overlay.active .popup-box { transform: scale(1) translateY(0); }
-.popup-box h2 { font-size: clamp(1.4rem, 3vw, 2rem); color: var(--dark); margin-bottom: 20px; }
-.popup-box p { font-size: clamp(0.9rem, 1.5vw, 1.1rem); color: var(--gray); margin-bottom: 30px; }
+.popup-overlay.active .popup-box {
+  transform: scale(1) translateY(0);
+}
+.popup-box h2 {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  color: var(--dark);
+  margin-bottom: 20px;
+}
+.popup-box p {
+  font-size: clamp(0.9rem, 1.5vw, 1.1rem);
+  color: var(--gray);
+  margin-bottom: 30px;
+}
 
 .popup-btn {
   background: var(--primary);
@@ -207,10 +292,13 @@ body, html {
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 10px 30px rgba(59,130,246,0.3);
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
   transition: all 0.3s ease;
 }
-.popup-btn:hover { background: var(--primary-dark); transform: translateY(-2px); }
+.popup-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+}
 
 .video-popup video {
   max-width: min(80vw, 900px);
@@ -224,12 +312,14 @@ body, html {
    ======================================== */
 .mute-btn {
   position: fixed;
-  bottom: 30px; right: 30px;
-  width: 50px; height: 50px;
+  bottom: max(30px, calc(16px + env(safe-area-inset-bottom)));
+  right: max(30px, calc(16px + env(safe-area-inset-right)));
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: var(--white);
   border: none;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   cursor: pointer;
   z-index: 99999;
   display: flex;
@@ -238,26 +328,116 @@ body, html {
   font-size: 1.5rem;
   transition: all 0.3s ease;
 }
-.mute-btn:hover { transform: scale(1.1); }
-.mute-btn.unmuted { background: var(--primary); }
-.mute-btn.unmuted span { filter: brightness(10); }
-
-/* ========================================
-   Mobile Responsive (공통)
-   ======================================== */
-@media (max-width: 768px) {
-  .card { padding: 30px 20px; border-radius: 16px; }
-  .card-number { font-size: 5rem; }
-  .card.fullscreen { padding: 50px 20px 100px; }
-  .card.fullscreen .card-number { font-size: 8rem; }
-  .indicator { right: 15px; gap: 12px; }
-  .dot { width: 10px; height: 10px; }
-  .close-btn { bottom: 25px; padding: 12px 35px; font-size: 0.85rem; }
-  .mute-btn { width: 44px; height: 44px; bottom: 20px; right: 20px; font-size: 1.3rem; }
+.mute-btn:hover {
+  transform: scale(1.1);
+}
+.mute-btn:active {
+  transform: scale(0.95);
+}
+.mute-btn.unmuted {
+  background: var(--primary);
+}
+.mute-btn.unmuted span {
+  filter: brightness(10);
 }
 
+/* ========================================
+   Tablet (769px – 1024px)
+   ======================================== */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .indicator {
+    right: max(24px, calc(12px + env(safe-area-inset-right)));
+    gap: 14px;
+  }
+  .dot {
+    width: 11px;
+    height: 11px;
+  }
+}
+
+/* ========================================
+   Mobile Responsive (공통 ≤ 768px)
+   ======================================== */
+@media (max-width: 768px) {
+  .card {
+    padding: 30px 20px;
+    border-radius: 16px;
+  }
+  .card-number {
+    font-size: 5rem;
+  }
+  .card.fullscreen {
+    padding: 50px 20px 100px;
+    padding-bottom: max(100px, calc(80px + env(safe-area-inset-bottom)));
+  }
+  .card.fullscreen .card-number {
+    font-size: 8rem;
+  }
+  .indicator {
+    right: max(15px, calc(8px + env(safe-area-inset-right)));
+    gap: 12px;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+  }
+  .close-btn {
+    bottom: max(20px, calc(12px + env(safe-area-inset-bottom)));
+    padding: 10px 30px;
+    font-size: 0.85rem;
+  }
+  .mute-btn {
+    width: 44px;
+    height: 44px;
+    bottom: max(20px, calc(12px + env(safe-area-inset-bottom)));
+    right: max(16px, calc(8px + env(safe-area-inset-right)));
+    font-size: 1.3rem;
+  }
+}
+
+/* 가로(landscape) 모드 – 폰 */
+@media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
+  .card.fullscreen {
+    padding-top: 40px;
+    padding-bottom: max(60px, calc(50px + env(safe-area-inset-bottom)));
+  }
+  .close-btn {
+    bottom: max(12px, calc(8px + env(safe-area-inset-bottom)));
+    padding: 8px 24px;
+    min-height: 40px;
+  }
+  .mute-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+    bottom: max(12px, calc(8px + env(safe-area-inset-bottom)));
+    right: max(12px, calc(8px + env(safe-area-inset-right)));
+  }
+  .indicator {
+    right: max(10px, calc(6px + env(safe-area-inset-right)));
+    gap: 10px;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+  }
+}
+
+/* ========================================
+   Extra Small (≤ 400px)
+   ======================================== */
 @media (max-width: 400px) {
-  .card { padding: 25px 15px; }
-  .card-number { font-size: 4rem; }
-  .card.fullscreen .card-number { font-size: 6rem; }
+  .card {
+    padding: 25px 15px;
+  }
+  .card-number {
+    font-size: 4rem;
+  }
+  .card.fullscreen .card-number {
+    font-size: 6rem;
+  }
+  .close-btn {
+    padding: 9px 24px;
+    font-size: 0.8rem;
+  }
 }

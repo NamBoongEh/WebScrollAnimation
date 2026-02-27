@@ -29,8 +29,9 @@ window.Card6 = {
   hueTime: 0, // 항상 진행 (hover/zoom 정지 무관)
   accentColor: null,
   lineColor: "#223355",
-  auroraLayers: null,
-  auroraCurtains: null,
+  auroraScene: null,
+  auroraCamera: null,
+  auroraMesh: null,
 
   // Radio 선택: 하나의 special 노드만 선택 가능
   selectedNode: null,
@@ -47,7 +48,6 @@ window.Card6 = {
   audioEl: null,
 
   // 공개 도메인 클래식 음악 10곡 (special 노드 10개에 1:1 매핑)
-  // Wikimedia Commons 음원 — CORS 지원, 공개 도메인
   TRACKS: [
     {
       title: "01-Beethoven-Piano_Sonata_No32_op111-Michelangeli1962-Track01",
@@ -122,6 +122,11 @@ window.Card6 = {
     if (!this.card || !this.container) return;
     if (this.isInitialized) return;
 
+    // 모바일 감지: pixelRatio 제한·antialias 제어에 사용
+    this._isMobile =
+      /Mobi|Android|iPad|Tablet/i.test(navigator.userAgent) ||
+      ("ontouchstart" in window && window.innerWidth < 1024);
+
     this.setupTheme();
     this.createDOM();
     this.initThree();
@@ -129,6 +134,7 @@ window.Card6 = {
 
     new ResizeObserver(() => this.handleResize()).observe(this.container);
     this.isInitialized = true;
+    this._boundAnimate = this.animate.bind(this);
     this.animate();
   },
 
@@ -147,15 +153,8 @@ window.Card6 = {
   },
 
   createDOM() {
-    // 오로라 레이어 5개 + 정지 버튼
+    // aurora는 WebGL shader로 렌더링 — DOM 레이어 불필요
     this.container.innerHTML = `
-      <div id="aurora-bg-6">
-        <div class="aurora-layer"></div>
-        <div class="aurora-layer"></div>
-        <div class="aurora-layer"></div>
-        <div class="aurora-layer"></div>
-        <div class="aurora-layer"></div>
-      </div>
       <div id="parallax-text-6"></div>
       <div id="node-tooltip-6">
         <div class="tooltip-content">
@@ -175,23 +174,31 @@ window.Card6 = {
   },
 
   createNodes() {
-    const numSpecial = this.TRACKS.length;     // tracks 수 = special 노드 수
-    const numNormal  = numSpecial * 5;         // 일반 노드는 special의 5배
+    const numSpecial = this.TRACKS.length; // tracks 수 = special 노드 수
+    const numNormal = numSpecial * 5; // 일반 노드는 special의 5배
     const specialGeo = new THREE.OctahedronGeometry(0.4, 0);
-    const normalGeo  = new THREE.IcosahedronGeometry(0.18, 0);
-    const glowGeo    = new THREE.SphereGeometry(0.75, 12, 12);
+    const normalGeo = new THREE.IcosahedronGeometry(0.18, 0);
+    const glowGeo = new THREE.SphereGeometry(0.75, 12, 12);
 
-    const matAccent = new THREE.MeshBasicMaterial({ color: new THREE.Color(this.accentColor) });
-    const matWhite  = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
+    const matAccent = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(this.accentColor),
+    });
+    const matWhite = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.4,
+    });
 
     // ── Special 노드: TRACKS.length 개, 각각 랜덤 t → 포메이션 내 랜덤 위치 ──
     for (let s = 0; s < numSpecial; s++) {
-      const t = Math.random();   // 0~1 랜덤 → 포메이션 위치 랜덤화
+      const t = Math.random(); // 0~1 랜덤 → 포메이션 위치 랜덤화
       const mesh = new THREE.Mesh(specialGeo, matAccent.clone());
 
-      const glowMat  = new THREE.MeshBasicMaterial({
+      const glowMat = new THREE.MeshBasicMaterial({
         color: new THREE.Color(this.accentColor),
-        transparent: true, opacity: 0, side: THREE.BackSide,
+        transparent: true,
+        opacity: 0,
+        side: THREE.BackSide,
       });
       const glowMesh = new THREE.Mesh(glowGeo, glowMat);
       mesh.add(glowMesh);
@@ -391,7 +398,8 @@ window.Card6 = {
     if (isPlaying) {
       const track = this.TRACKS[this.selectedNode.userData.trackIndex];
       const label = btn.querySelector(".c6-stop-track");
-      if (label && track) label.textContent = `${track.composer} — ${track.title}`;
+      if (label && track)
+        label.textContent = `${track.composer} — ${track.title}`;
     }
   },
 
@@ -454,37 +462,84 @@ window.Card6 = {
     });
   },
 
-  /* ==================== AURORA COLOR ANIMATION ==================== */
+  /* ==================== AURORA SHADER ==================== */
 
-  updateAuroraColors(t) {
-    if (!this.auroraLayers || this.auroraLayers.length === 0) {
-      this.auroraLayers = document.querySelectorAll("#aurora-bg-6 .aurora-layer");
-    }
+  // WebGL fullscreen quad에 GLSL shader로 오로라 렌더링.
+  // DOM blur/repaint 완전 제거 — GPU에서 모든 연산 처리.
+  createAuroraShader() {
+    this.auroraScene = new THREE.Scene();
+    this.auroraCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-    this.auroraLayers.forEach((layer, i) => {
-      // 레이어마다 다른 속도·위상 — 느리게 순환 (t*5: 이전 t*11보다 절반 이하)
-      const hue1 = (t * 5 + i * 62) % 360;
-      const hue2 = (hue1 + 50 + Math.sin(t * 0.25 + i) * 20) % 360;
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0.0 } },
+      depthTest: false,
+      depthWrite: false,
+      vertexShader: /* glsl */ `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = vec4(position.xy, 0.0, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform float uTime;
+        varying vec2 vUv;
 
-      // 타원형 그라디언트 중심·크기 — 이전보다 느리고 이동 폭 줄임
-      const cx = 48 + Math.sin(t * 0.15 + i * 1.25) * 28;
-      const cy = 45 + Math.cos(t * 0.12 + i * 0.95) * 28;
-      const rw = 54 + Math.sin(t * 0.08 + i * 2.0) * 22;
-      const rh = 30 + Math.cos(t * 0.10 + i * 1.6) * 15;
+        // HSL(0-1) → RGB
+        vec3 hsl2rgb(vec3 c) {
+          vec3 p = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+          return c.z + c.y * (p - 0.5) * (1.0 - abs(2.0 * c.z - 1.0));
+        }
 
-      // blur 완만한 변동 (±8px) — 이전 ±30px에서 대폭 줄임
-      const blurPx = 65 + Math.sin(t * 0.6 + i * 0.75) * 8;
-      layer.style.filter = `blur(${blurPx}px)`;
+        void main() {
+          float t = uTime;
 
-      // opacity — 아주 느린 맥박 (±0.08), 급격한 깜박임 없음
-      const op = 0.72 + Math.sin(t * 0.4 + i * 1.1) * 0.08;
-      layer.style.opacity = op;
+          // 배경색 #08080f
+          vec3 col = vec3(0.031, 0.031, 0.059);
 
-      layer.style.background =
-        `radial-gradient(ellipse ${rw}% ${rh}% at ${cx}% ${cy}%, ` +
-        `hsl(${hue1},85%,58%) 0%, ` +
-        `hsl(${hue2},80%,40%) 45%, transparent 72%)`;
+          // 5개 오로라 blob — JS updateAuroraColors() 파라미터와 동일한 값 사용
+          for (int i = 0; i < 5; i++) {
+            float fi = float(i);
+            float ph = fi * 1.25;
+
+            // 중심 이동: JS cx = 0.48 + sin(t*0.15+ph)*0.28, cy = 0.45 + cos(t*0.12+ph*0.76)*0.28
+            float cx = 0.48 + sin(t * 0.15 + ph) * 0.28;
+            float cy = 0.45 + cos(t * 0.12 + ph * 0.76) * 0.28;
+
+            // 타원형 Gaussian — CSS radial-gradient(ellipse) + blur(65px) 효과 재현
+            // dx scale 0.75 → 수평 ~133%, dy scale 1.35 → 수직 ~74% 커버
+            float dx = (vUv.x - cx) * 0.75;
+            float dy = (vUv.y - cy) * 1.35;
+            float dist2 = dx * dx + dy * dy;
+            float blob  = exp(-dist2 * 2.0);
+
+            // 중심(c1) → 외곽(c2) 색상 보간 (gradient 0%→45% stop 재현)
+            float h1 = mod(t * 5.0 / 360.0 + fi * 62.0 / 360.0, 1.0);
+            float h2 = mod(h1 + 50.0 / 360.0 + sin(t * 0.25 + fi) * 20.0 / 360.0, 1.0);
+            vec3 c1 = hsl2rgb(vec3(h1, 0.85, 0.58));
+            vec3 c2 = hsl2rgb(vec3(h2, 0.80, 0.40));
+            vec3 blobCol = mix(c1, c2, smoothstep(0.0, 0.7, sqrt(dist2)));
+
+            // opacity 맥박 (JS: 0.72 + sin(t*0.4+i*1.1)*0.08)
+            float op = 0.72 + sin(t * 0.4 + fi * 1.1) * 0.08;
+
+            // Screen blend: 1-(1-A)(1-B)  ← CSS mix-blend-mode: screen 재현
+            // 0.78 = aurora-bg-6 opacity
+            col = 1.0 - (1.0 - col) * (1.0 - blobCol * blob * op * 0.78);
+          }
+
+          gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+        }
+      `,
     });
+
+    this.auroraMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+    this.auroraScene.add(this.auroraMesh);
+  },
+
+  // animate()에서 매 프레임 호출 — uTime uniform 갱신만 (GPU가 나머지 처리)
+  updateAuroraShader(t) {
+    if (this.auroraMesh) this.auroraMesh.material.uniforms.uTime.value = t;
   },
 
   /* ==================== NODE COLOR ANIMATION ==================== */
@@ -537,9 +592,9 @@ window.Card6 = {
 
   initThree() {
     this._v3ScaleSelected = new THREE.Vector3(2.3, 2.3, 2.3);
-    this._v3ScaleHovered  = new THREE.Vector3(1.8, 1.8, 1.8);
-    this._v3ScaleNormal   = new THREE.Vector3(1, 1, 1);
-    this._v3CamTarget     = new THREE.Vector3();
+    this._v3ScaleHovered = new THREE.Vector3(1.8, 1.8, 1.8);
+    this._v3ScaleNormal = new THREE.Vector3(1, 1, 1);
+    this._v3CamTarget = new THREE.Vector3();
 
     this.scene = new THREE.Scene();
     this.clock = new THREE.Clock();
@@ -551,8 +606,18 @@ window.Card6 = {
     this.listener = new THREE.AudioListener();
     this.camera.add(this.listener);
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: !this._isMobile,
+      alpha: false,
+    });
+    // 모바일: pixel ratio 1x 고정 → 렌더링 해상도 절반으로 GPU/메모리 부하 대폭 감소
+    this.renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio, this._isMobile ? 1 : 2),
+    );
+    // aurora + 노드 씬을 순서대로 렌더링하기 위해 자동 clear 비활성화
+    this.renderer.autoClear = false;
     this.container.appendChild(this.renderer.domElement);
+    this.createAuroraShader();
     this.createNodes();
     this.handleResize();
   },
@@ -566,6 +631,131 @@ window.Card6 = {
 
     this.container.addEventListener("mousemove", updateMouse);
 
+    // ── 터치 상태 변수 ────────────────────────────────────────────
+    let _touchStartX = 0,
+      _touchStartY = 0,
+      _prevTouchY = 0;
+    let _longPressTimer = null;
+    let _longPressActive = false; // 롱프레스로 hover 고정 중
+    let _touchScrolling = false; // 드래그 스크롤 중
+    let _touchTapHandled = false; // touchend 탭 처리 → click 이벤트 중복 방지
+    const LONG_PRESS_MS = 500;
+    const MOVE_THRESHOLD = 10; // px
+
+    // 모바일 롱프레스 시 브라우저 기본 컨텍스트 메뉴 방지
+    this.container.addEventListener("contextmenu", (e) => {
+      if (e.cancelable) e.preventDefault();
+    });
+
+    // touchstart: 좌표 기록 + 롱프레스 타이머 시작
+    this.container.addEventListener(
+      "touchstart",
+      (e) => {
+        if (!this.isActive || !this.card.classList.contains("fullscreen"))
+          return;
+        const touch = e.touches[0];
+        const rect = this.container.getBoundingClientRect();
+        _touchStartX = touch.clientX;
+        _touchStartY = touch.clientY;
+        _prevTouchY = touch.clientY;
+        _longPressActive = false;
+        _touchScrolling = false;
+        _touchTapHandled = false;
+
+        // 마우스 좌표 업데이트 (다음 프레임 raycasting → hover 감지)
+        this.mouse.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+
+        // 롱프레스 타이머: 500ms 후 hover 고정 + 햅틱 피드백
+        _longPressTimer = setTimeout(() => {
+          _longPressActive = true;
+          if (navigator.vibrate) navigator.vibrate(40);
+        }, LONG_PRESS_MS);
+      },
+      { passive: true },
+    );
+
+    // touchmove: 세로 드래그 스크롤 처리 + 롱프레스 타이머 취소
+    this.container.addEventListener(
+      "touchmove",
+      (e) => {
+        if (!this.isActive || !this.card.classList.contains("fullscreen"))
+          return;
+        const touch = e.touches[0];
+        const totalDx = Math.abs(touch.clientX - _touchStartX);
+        const totalDy = Math.abs(touch.clientY - _touchStartY);
+        const dy = _prevTouchY - touch.clientY; // 위로 드래그 시 양수
+
+        // 이동량이 임계값 초과 → 롱프레스 타이머 취소
+        if (totalDx > MOVE_THRESHOLD || totalDy > MOVE_THRESHOLD) {
+          if (_longPressTimer) {
+            clearTimeout(_longPressTimer);
+            _longPressTimer = null;
+          }
+          // 롱프레스 미활성 상태에서 이동 → 스크롤 모드, hover 해제
+          if (!_longPressActive) {
+            _touchScrolling = true;
+            this.mouse.set(-1, -1);
+          }
+        }
+
+        // 세로 드래그 스크롤 (롱프레스·hover 중에는 스크롤 차단)
+        if (_touchScrolling && !this.isHoveringSpecial && totalDy > totalDx) {
+          this.targetScroll = Math.max(
+            0,
+            Math.min(100, this.targetScroll + dy * 0.3),
+          );
+          e.preventDefault(); // 페이지 스크롤 방지
+        }
+
+        _prevTouchY = touch.clientY;
+      },
+      { passive: false },
+    );
+
+    // touchend: 탭 → 노드 선택/해제, 롱프레스 → hover 해제
+    this.container.addEventListener(
+      "touchend",
+      () => {
+        if (_longPressTimer) {
+          clearTimeout(_longPressTimer);
+          _longPressTimer = null;
+        }
+
+        if (this.isActive && this.card.classList.contains("fullscreen")) {
+          if (!_touchScrolling && !_longPressActive) {
+            // 짧은 탭 → raycasting으로 노드 선택/해제
+            this.raycaster.setFromCamera(this.mouse, this.camera);
+            const targets = this.nodes
+              .filter((n) => n.isSpecial)
+              .map((n) => n.mesh);
+            const hits = this.raycaster.intersectObjects(targets);
+            if (hits.length > 0) {
+              const nodeData = this.nodes.find(
+                (n) => n.mesh === hits[0].object,
+              );
+              if (nodeData) this.selectNode(nodeData);
+            } else {
+              if (this.isZoomed) {
+                this.isZoomed = false;
+                this.zoomNode = null;
+              }
+            }
+            _touchTapHandled = true;
+          }
+
+          // 롱프레스 종료 → hover 해제 (mouse를 화면 밖으로)
+          if (_longPressActive) {
+            _longPressActive = false;
+            this.mouse.set(-1, -1);
+          }
+        }
+
+        _touchScrolling = false;
+      },
+      { passive: true },
+    );
+
     // 정지 버튼 클릭 → 즉시 재생 중단
     const stopBtn = document.getElementById("c6-stop-btn");
     if (stopBtn) {
@@ -575,8 +765,12 @@ window.Card6 = {
       });
     }
 
-    // 클릭 → radio 선택 (풀스크린 전용)
+    // 클릭 → radio 선택 (데스크톱 전용 — 터치 탭은 touchend에서 처리)
     this.container.addEventListener("click", (e) => {
+      if (_touchTapHandled) {
+        _touchTapHandled = false;
+        return;
+      } // 터치 중복 방지
       if (!this.isActive) return;
       if (!this.card.classList.contains("fullscreen")) return;
       updateMouse(e);
@@ -596,6 +790,7 @@ window.Card6 = {
       }
     });
 
+    // 휠 스크롤 (데스크톱)
     window.addEventListener(
       "wheel",
       (e) => {
@@ -621,6 +816,13 @@ window.Card6 = {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h, false);
+    // setSize()는 캔버스 버퍼를 재할당해 흑화면을 유발하므로
+    // isActive 여부에 관계없이 즉시 현재 씬을 재렌더링해 검은 플래시 방지
+    if (this.auroraScene && this.scene) {
+      this.renderer.clear();
+      this.renderer.render(this.auroraScene, this.auroraCamera);
+      this.renderer.render(this.scene, this.camera);
+    }
   },
 
   updateScene(dt) {
@@ -643,8 +845,8 @@ window.Card6 = {
     const effectiveDt = this.isHoveringSpecial || this.isZoomed ? 0 : dt;
     this.customTime += effectiveDt;
 
-    // 오로라 배경 색상 + 커튼 (매 프레임)
-    this.updateAuroraColors(this.hueTime);
+    // 오로라 shader uniform 업데이트 (실제 렌더링은 animate()에서 auroraScene으로 수행)
+    this.updateAuroraShader(this.hueTime);
 
     // Scroll & Formations
     this.scroll += (this.targetScroll - this.scroll) * 0.1;
@@ -738,8 +940,14 @@ window.Card6 = {
       }
 
       const rect = this.container.getBoundingClientRect();
-      this.tooltip.style.left = `${((this.mouse.x + 1) / 2) * rect.width + 25}px`;
-      this.tooltip.style.top = `${(-(this.mouse.y - 1) / 2) * rect.height - 50}px`;
+      const rawLeft = ((this.mouse.x + 1) / 2) * rect.width + 25;
+      const rawTop = (-(this.mouse.y - 1) / 2) * rect.height - 50;
+      // 툴팁이 컨테이너 밖으로 나가지 않도록 클램프
+      const ttW = this.tooltip.offsetWidth || 220;
+      const ttH = this.tooltip.offsetHeight || 80;
+      const pad = 8;
+      this.tooltip.style.left = `${Math.max(pad, Math.min(rawLeft, rect.width - ttW - pad))}px`;
+      this.tooltip.style.top = `${Math.max(pad, Math.min(rawTop, rect.height - ttH - pad))}px`;
     } else {
       if (this.lastHoveredId !== null) {
         this.tooltip.classList.remove("visible");
@@ -762,19 +970,18 @@ window.Card6 = {
   },
 
   animate() {
-    requestAnimationFrame(() => this.animate());
-    if (!this.isActive) {
-      if (this.renderer && this.scene && this.camera) {
-        this.renderer.render(this.scene, this.camera);
-      }
-      return;
-    }
+    requestAnimationFrame(this._boundAnimate);
+    if (!this.isActive) return;
     const dt = this.clock.getDelta();
     this.updateScene(dt);
-    // renderer.render()이 scene graph를 순회하면서
-    // AudioListener와 PositionalAudio의 updateMatrixWorld()를 호출하여
-    // AudioContext listener/panner 위치를 자동 갱신
-    if (this.renderer) this.renderer.render(this.scene, this.camera);
+    if (this.renderer) {
+      // 1. clear → 2. aurora 배경 quad → 3. 노드/라인/파티클 씬
+      // autoClear=false이므로 수동 clear 후 두 씬을 순서대로 렌더링
+      this.renderer.clear();
+      this.renderer.render(this.auroraScene, this.auroraCamera);
+      // AudioListener·PositionalAudio 위치 갱신은 이 render() 호출에서 수행
+      this.renderer.render(this.scene, this.camera);
+    }
   },
 
   activate() {

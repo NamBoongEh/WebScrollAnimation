@@ -1,16 +1,3 @@
-/**
- * ========================================
- * script.js - Main Page Controller
- * Three.js CSS3DRenderer 기반 리팩토링
- * ========================================
- * CSS3DRenderer로 카드 스택 3D 포지셔닝
- * PerspectiveCamera로 패럴랙스 효과
- * 수정: 카드 뒤집힘 및 위치 초기화 문제 해결
- */
-
-// ========================================
-// Utils (전역 공유 - card*.js에서도 접근)
-// ========================================
 var Utils = {
   $(selector) {
     return document.querySelector(selector);
@@ -106,7 +93,7 @@ var ThreeStack = {
   cardH: 0,
   fov: 40,
   camBaseZ: 0,
-  
+
   // 초기 상태 저장 (복원용)
   initialStates: [],
 
@@ -195,10 +182,11 @@ var ThreeStack = {
         visible: i === 0,
         tVisible: i === 0,
         interactive: i === 0,
+        cInteractive: i === 0,
         // 인덱스 저장
         index: i,
       };
-      
+
       // 초기 상태 저장
       self.initialStates[i] = {
         position: { x: 0, y: 0, z: 0 },
@@ -308,7 +296,7 @@ var ThreeStack = {
     obj.position.set(0, 0, 0);
 
     // rotation 초기화 (Euler) - 순서 명시
-    obj.rotation.set(0, 0, 0, 'XYZ');
+    obj.rotation.set(0, 0, 0, "XYZ");
 
     // quaternion 초기화 (identity quaternion)
     obj.quaternion.identity();
@@ -349,13 +337,13 @@ var ThreeStack = {
       d.interactive = diff === 0;
 
       // **핵심 수정: 회전 완전 초기화**
-      obj.rotation.set(0, 0, 0, 'XYZ');
+      obj.rotation.set(0, 0, 0, "XYZ");
       obj.quaternion.identity();
 
       // 위치 설정
       obj.position.set(p.x, p.y, p.z);
       obj.scale.setScalar(p.scale);
-      
+
       // matrix 강제 업데이트
       obj.updateMatrix();
       obj.updateMatrixWorld(true);
@@ -466,8 +454,11 @@ var ThreeStack = {
         obj.visible = false;
       }
 
-      // 포인터 이벤트
-      obj.element.style.pointerEvents = d.interactive ? "auto" : "none";
+      // 포인터 이벤트 (변경 시에만 style 업데이트)
+      if (d.interactive !== d.cInteractive) {
+        obj.element.style.pointerEvents = d.interactive ? "auto" : "none";
+        d.cInteractive = d.interactive;
+      }
     });
   },
 
@@ -500,27 +491,27 @@ var ThreeStack = {
   reattach(index, currentIndex) {
     var obj = this.objects[index];
     if (!obj) return;
-    
+
     var element = obj.element;
-    
+
     // **핵심 수정: 기존 CSS3DObject 제거 후 새로 생성**
     // CSS3DObject의 내부 상태가 꼬일 수 있으므로 완전히 새로 만듦
     var newObj = new THREE.CSS3DObject(element);
-    
+
     // userData 복사
     newObj.userData = obj.userData;
-    
+
     // 완전 초기화
     newObj.position.set(0, 0, 0);
-    newObj.rotation.set(0, 0, 0, 'XYZ');
+    newObj.rotation.set(0, 0, 0, "XYZ");
     newObj.quaternion.identity();
     newObj.scale.set(1, 1, 1);
     newObj.matrixAutoUpdate = true;
     newObj.updateMatrix();
-    
+
     // objects 배열 업데이트
     this.objects[index] = newObj;
-    
+
     // 씬에 추가
     this.scene.add(newObj);
   },
@@ -546,7 +537,13 @@ var App = {
   // Mouse state
   mouse: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
 
+  _boundAnimate: null,
+
   init() {
+    // 터치 기기 여부 (모바일/태블릿): 패럴랙스 비활성화에 사용
+    this._isTouchDevice =
+      navigator.maxTouchPoints > 0 || "ontouchstart" in window;
+
     // #card-source에서 카드 요소 수집
     var source = Utils.$("#card-source");
     this.cards = Array.from(source.querySelectorAll(".card"));
@@ -560,6 +557,7 @@ var App = {
     this.createIndicator();
     this.bindEvents();
     this.updateTitle();
+    this._boundAnimate = this.animate.bind(this);
     this.animate();
   },
 
@@ -641,11 +639,13 @@ var App = {
       }
     });
 
-    // Mouse tracking
-    document.addEventListener("mousemove", function (e) {
-      self.mouse.x = e.clientX;
-      self.mouse.y = e.clientY;
-    });
+    // Mouse tracking (터치 기기에서는 합성 mousemove가 패럴랙스를 오작동시키므로 무시)
+    if (!self._isTouchDevice) {
+      document.addEventListener("mousemove", function (e) {
+        self.mouse.x = e.clientX;
+        self.mouse.y = e.clientY;
+      });
+    }
 
     // Wheel
     document.addEventListener(
@@ -656,26 +656,137 @@ var App = {
       { passive: false },
     );
 
+    // ── 줌 방지 ──────────────────────────────────────────────
+    // iOS Safari/Chrome은 viewport user-scalable=no를 무시하므로 JS로 차단
+    // gesture* : iOS Safari 핀치줌 이벤트
+    document.addEventListener(
+      "gesturestart",
+      function (e) {
+        e.preventDefault();
+      },
+      { passive: false },
+    );
+    document.addEventListener(
+      "gesturechange",
+      function (e) {
+        e.preventDefault();
+      },
+      { passive: false },
+    );
+    document.addEventListener(
+      "gestureend",
+      function (e) {
+        e.preventDefault();
+      },
+      { passive: false },
+    );
+    // 멀티터치(핀치) 차단
+    document.addEventListener(
+      "touchstart",
+      function (e) {
+        if (e.touches.length > 1) e.preventDefault();
+      },
+      { passive: false },
+    );
+    // 더블탭 줌 차단
+    var _lastTap = 0;
+    document.addEventListener(
+      "touchend",
+      function (e) {
+        var now = Date.now();
+        if (now - _lastTap < 300) e.preventDefault();
+        _lastTap = now;
+      },
+      { passive: false },
+    );
+    // ─────────────────────────────────────────────────────────
+
     // Touch
-    var touchStartY = 0;
+    var touchStartY = 0,
+      touchStartX = 0,
+      touchActive = false;
     document.addEventListener(
       "touchstart",
       function (e) {
         touchStartY = e.touches[0].clientY;
+        touchStartX = e.touches[0].clientX;
+        touchActive = true;
       },
       { passive: true },
     );
 
     document.addEventListener(
+      "touchmove",
+      function (e) {
+        // 멀티터치(핀치) 항상 차단
+        if (e.touches.length > 1) {
+          e.preventDefault();
+          return;
+        }
+        if (!touchActive || self.isAnimating || self.isFullscreen) return;
+        var deltaY = touchStartY - e.touches[0].clientY;
+        var deltaX = touchStartX - e.touches[0].clientX;
+        // 세로 스와이프만 처리 (가로보다 세로 이동이 클 때)
+        if (Math.abs(deltaY) > Math.abs(deltaX)) {
+          e.preventDefault(); // 브라우저 기본 동작(취소·스크롤) 방지
+          ThreeStack.applyScrollPreview(
+            self.current,
+            deltaY,
+            self.scroll.threshold,
+          );
+        } else {
+          // 가로 터치 위치 → 카메라 패럴랙스에 사용
+          self.mouse.x = e.touches[0].clientX;
+          self.mouse.y = e.touches[0].clientY;
+        }
+      },
+      { passive: false },
+    );
+
+    document.addEventListener(
       "touchend",
       function (e) {
-        if (self.isAnimating || self.isFullscreen) return;
+        if (!touchActive) return;
+        touchActive = false;
+        // 터치 종료 후 패럴랙스를 화면 중심으로 부드럽게 복귀
+        self.mouse.x = window.innerWidth / 2;
+        self.mouse.y = window.innerHeight / 2;
+        if (self.isAnimating || self.isFullscreen) {
+          return;
+        }
         var deltaY = touchStartY - e.changedTouches[0].clientY;
-        if (Math.abs(deltaY) > 50)
+        var deltaX = touchStartX - e.changedTouches[0].clientX;
+        ThreeStack.resetScrollPreview(self.current);
+        // 세로 스와이프 & 50px 이상 이동 시 카드 전환
+        if (Math.abs(deltaY) > 50 && Math.abs(deltaY) > Math.abs(deltaX)) {
           self.navigateTo(self.current + (deltaY > 0 ? 1 : -1));
+        }
       },
       { passive: true },
     );
+
+    document.addEventListener(
+      "touchcancel",
+      function () {
+        touchActive = false;
+        ThreeStack.resetScrollPreview(self.current);
+      },
+      { passive: true },
+    );
+
+    // 화면 회전 대응 (iOS에서 orientationchange 후 약간 딜레이 필요)
+    window.addEventListener("orientationchange", function () {
+      setTimeout(function () {
+        ThreeStack.onResize();
+      }, 200);
+    });
+
+    // visualViewport: iOS Safari/Chrome에서 주소창 표시/숨김 시 크기 변화 대응
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", function () {
+        ThreeStack.onResize();
+      });
+    }
   },
 
   handleWheel(e) {
@@ -727,9 +838,9 @@ var App = {
     var oldIndex = this.current;
     this.current = index;
 
-    // 이전 카드 비활성화, 새 카드 활성화 (리소스 최적화)
+    // 이전 카드 즉시 비활성화 → WebGL 렌더 즉시 중단
     this.setCardActive(oldIndex, false);
-    this.setCardActive(index, true);
+    // 신규 카드 WebGL은 CSS3D 전환 완료 후 활성화 (전환 중 GPU 경합 제거)
 
     // Three.js 목표값 세팅 (모든 카드 재배치)
     ThreeStack.setTargets(this.current);
@@ -775,9 +886,10 @@ var App = {
     this.updateIndicator();
     this.updateTitle();
 
-    // 트랜지션 완료 후 정리
+    // CSS3D 전환 완료 후 신규 카드 WebGL 활성화 + 정리
     setTimeout(function () {
       ThreeStack.setImmediate(self.current);
+      self.setCardActive(index, true);
       self.isAnimating = false;
     }, 850);
   },
@@ -821,8 +933,10 @@ var App = {
       transition: "all 0.6s cubic-bezier(0.4,0,0.2,1)",
       top: "0",
       left: "0",
-      width: "100vw",
-      height: "100vh",
+      // iOS에서 100vh는 주소창 포함 전체 높이라 실제 보이는 영역을 초과함
+      // window.innerWidth/Height는 실제 가시 영역을 반환
+      width: window.innerWidth + "px",
+      height: window.innerHeight + "px",
       borderRadius: "0",
     });
 
@@ -867,7 +981,7 @@ var App = {
       // **핵심 수정: 모든 스타일 완전 초기화**
       // CSS3DRenderer가 다시 제어할 수 있도록 inline 스타일 제거
       card.style.cssText = "";
-      
+
       // 필수 속성만 다시 설정
       card.style.width = ThreeStack.cardW + "px";
       card.style.height = ThreeStack.cardH + "px";
@@ -876,7 +990,7 @@ var App = {
       card.style.opacity = "1";
       card.style.pointerEvents = "auto";
       card.style.backfaceVisibility = "hidden";
-      
+
       // transform 관련 속성 명시적 초기화
       card.style.transform = "none";
       card.style.webkitTransform = "none";
@@ -888,13 +1002,13 @@ var App = {
 
       // Three.js 씬에 재연결 (새 CSS3DObject 생성)
       ThreeStack.reattach(index, self.current);
-      
+
       // 약간의 딜레이 후 위치 설정 (렌더링 안정화)
-      requestAnimationFrame(function() {
+      requestAnimationFrame(function () {
         ThreeStack.setImmediate(self.current);
-        
+
         // 추가 안정화
-        requestAnimationFrame(function() {
+        requestAnimationFrame(function () {
           ThreeStack.setImmediate(self.current);
         });
       });
@@ -908,22 +1022,15 @@ var App = {
    * 메인 애니메이션 루프
    */
   animate() {
-    var self = this;
+    ThreeStack.updateCamera(this.mouse.x, this.mouse.y);
 
-    if (!this.isFullscreen) {
-      // 마우스 패럴랙스 → 카메라 이동
-      ThreeStack.updateCamera(this.mouse.x, this.mouse.y);
-
-      // 카드 보간 업데이트
-      ThreeStack.update(this.current);
-    }
+    // 카드 보간 업데이트
+    ThreeStack.update(this.current);
 
     // Three.js 렌더
     ThreeStack.render();
 
-    requestAnimationFrame(function () {
-      self.animate();
-    });
+    requestAnimationFrame(this._boundAnimate);
   },
 };
 

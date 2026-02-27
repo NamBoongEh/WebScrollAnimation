@@ -17,6 +17,7 @@ window.Card4 = {
   windmillBlade: null,
   trees: [],
   houses: [],
+  windmills: [],
   sheep: [], // 양 배열 - 반드시 초기화 필요
   ducks: [], // 오리 배열
   obstacleList: [],
@@ -120,6 +121,10 @@ window.Card4 = {
   _wagonColorIdx: 0,
   _trackWoodMat: null,
   _trackRailMat: null,
+  _treeTrunkMat: null,
+  _treeLeafMats: null,
+  _worldPos: null,
+  _screenPos: null,
   _boundAnimate: null,
   _flatTrackPoints: [],
 
@@ -158,8 +163,22 @@ window.Card4 = {
     this.isInitialized = true;
     this.clock = new THREE.Clock();
     this._boundAnimate = this.animate.bind(this);
-    this._trackWoodMat = new THREE.MeshLambertMaterial({ color: this.C.trackWood });
-    this._trackRailMat = new THREE.MeshLambertMaterial({ color: this.C.trackRail });
+    this._trackWoodMat = new THREE.MeshLambertMaterial({
+      color: this.C.trackWood,
+    });
+    this._trackRailMat = new THREE.MeshLambertMaterial({
+      color: this.C.trackRail,
+    });
+    this._treeTrunkMat = new THREE.MeshLambertMaterial({
+      color: this.C.treeTrunk,
+    });
+    this._treeLeafMats = [
+      new THREE.MeshLambertMaterial({ color: this.C.treeLeaf }),
+      new THREE.MeshLambertMaterial({ color: this.C.treeLeafDark }),
+      new THREE.MeshLambertMaterial({ color: this.C.treeLeafLight }),
+    ];
+    this._worldPos = new THREE.Vector3();
+    this._screenPos = new THREE.Vector3();
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(this.C.skyDay);
@@ -241,8 +260,8 @@ window.Card4 = {
       const existingPoints = existing.points;
       const existingLen = existingPoints.length;
       // 첫 번째 세그먼트(역 연결쪽)는 시작부터 검사하여 역 방향 진입을 막음
-      const existingStart = (i === 0) ? 0 : Math.floor(existingLen * 0.2);
-      const existingEnd   = Math.floor(existingLen * 0.8);
+      const existingStart = i === 0 ? 0 : Math.floor(existingLen * 0.2);
+      const existingEnd = Math.floor(existingLen * 0.8);
 
       for (let k = checkStartIdx; k < newLen; k++) {
         const np = newPoints[k];
@@ -266,14 +285,17 @@ window.Card4 = {
       if (!seg.tunnelObj) continue;
       const cx = seg.tunnelObj.position.x;
       const cz = seg.tunnelObj.position.z;
-      const r  = seg.tunnelType === "tunnel" ? 13 : 12; // 터널=언덕+여유, 호수=수면
+      const r = seg.tunnelType === "tunnel" ? 13 : 12; // 터널=언덕+여유, 호수=수면
       const r2 = r * r;
       for (const np of newSegment.points) {
-        const dx = np.x - cx, dz = np.z - cz;
+        const dx = np.x - cx,
+          dz = np.z - cz;
         if (dx * dx + dz * dz >= r2) continue; // 구역 밖 → 무시
         // 입구/출구 연결 지점은 허용
-        const dsx = np.x - seg.startX, dsz = np.z - seg.startZ;
-        const dex = np.x - seg.endX,   dez = np.z - seg.endZ;
+        const dsx = np.x - seg.startX,
+          dsz = np.z - seg.startZ;
+        const dex = np.x - seg.endX,
+          dez = np.z - seg.endZ;
         if (dsx * dsx + dsz * dsz < 9) continue; // 입구에서 3유닛 이내
         if (dex * dex + dez * dez < 9) continue; // 출구에서 3유닛 이내
         return true; // 구조물 내부 관통 → 충돌
@@ -295,11 +317,12 @@ window.Card4 = {
     const posClose =
       !!first &&
       this.trackSegments.length >= 2 &&
-      this.distance(segment.endX, segment.endZ, first.startX, first.startZ) < 0.8;
+      this.distance(segment.endX, segment.endZ, first.startX, first.startZ) <
+        0.8;
     let angleMatch = false;
     if (posClose) {
       let da = (segment.endAngle - first.startAngle) % (2 * Math.PI);
-      if (da >  Math.PI) da -= 2 * Math.PI;
+      if (da > Math.PI) da -= 2 * Math.PI;
       if (da < -Math.PI) da += 2 * Math.PI;
       angleMatch = Math.abs(da) < 0.2; // ≈ 11.5° 이내만 허용
     }
@@ -315,10 +338,7 @@ window.Card4 = {
         // 기차역 플랫폼 충돌 체크 (실제 AABB, 여유 0.8 추가)
         // plat BoxGeometry(10,0.4,5), local(0,0.2,-1.5), rotation π/2
         // → 월드 x ∈ [-13.8, -7.2], z ∈ [-4.8, 6.8]
-        if (
-          np.x > -13.8 && np.x < -7.2 &&
-          np.z > -4.8  && np.z <  6.8
-        ) {
+        if (np.x > -13.8 && np.x < -7.2 && np.z > -4.8 && np.z < 6.8) {
           if (this.trackSegments.length >= 2) {
             console.log("Track overlaps with station platform");
             return;
@@ -343,6 +363,7 @@ window.Card4 = {
     if (isClosingLoop) this.isLoopClosed = true;
     this.hasReachedEnd = false;
     this.trackGroup.add(segment.mesh);
+    this.removeSceneryOverlappingTrack(segment);
     this._rebuildFlatTrackPoints();
     this.updateTrackCounter();
   },
@@ -356,13 +377,21 @@ window.Card4 = {
         if (child.material) child.material.dispose();
       });
       if (segment.tunnelObj) {
-        this.ducks = this.ducks.filter((d) => d.pondGroup !== segment.tunnelObj);
+        this.ducks = this.ducks.filter(
+          (d) => d.pondGroup !== segment.tunnelObj,
+        );
         this.scene.remove(segment.tunnelObj);
         segment.tunnelObj.traverse((child) => {
           if (child.geometry) child.geometry.dispose();
           if (child.material) child.material.dispose();
         });
         segment.tunnelObj = null;
+      }
+      // 이 세그먼트가 숨긴 나무/집/풍차 다시 보이게
+      if (segment.hiddenScenery) {
+        segment.hiddenScenery.forEach((obj) => {
+          obj.visible = true;
+        });
       }
     }
     this.isLoopClosed = false;
@@ -394,6 +423,13 @@ window.Card4 = {
         if (child.material) child.material.dispose();
       });
       segment.tunnelObj = null;
+    }
+
+    // 이 세그먼트가 숨긴 나무/집/풍차 다시 보이게
+    if (segment.hiddenScenery) {
+      segment.hiddenScenery.forEach((obj) => {
+        obj.visible = true;
+      });
     }
 
     this.isLoopClosed = false;
@@ -771,25 +807,32 @@ window.Card4 = {
 
     // === 4. 갈대 (갈대 줄기 + 부들 이삭) ===
     const reedStemMat = new THREE.MeshLambertMaterial({ color: 0x4a7c4e });
-    const reedTopMat  = new THREE.MeshLambertMaterial({ color: 0x6b4c2a });
-    const pondHalfX   = pondLen * 0.55;
-    const pondHalfZ   = 11;
+    const reedTopMat = new THREE.MeshLambertMaterial({ color: 0x6b4c2a });
+    const pondHalfX = pondLen * 0.55;
+    const pondHalfZ = 11;
     [
-      { x: -5.5, z:  8.5 }, { x:  1.5, z:  9.5 }, { x:  6.5, z:  7.0 },
-      { x: -8.5, z:  4.5 }, { x:  8.5, z:  4.5 },
-      { x: -5.0, z: -8.5 }, { x:  2.0, z: -9.5 }, { x: -7.0, z: -7.0 },
-      { x:  8.0, z: -5.0 },
+      { x: -5.5, z: 8.5 },
+      { x: 1.5, z: 9.5 },
+      { x: 6.5, z: 7.0 },
+      { x: -8.5, z: 4.5 },
+      { x: 8.5, z: 4.5 },
+      { x: -5.0, z: -8.5 },
+      { x: 2.0, z: -9.5 },
+      { x: -7.0, z: -7.0 },
+      { x: 8.0, z: -5.0 },
     ].forEach((pos) => {
       if ((pos.x / pondHalfX) ** 2 + (pos.z / pondHalfZ) ** 2 > 0.97) return;
       const h = 1.4 + Math.random() * 0.5;
       const rg = new THREE.Group();
       const stem = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.035, 0.055, h, 5), reedStemMat,
+        new THREE.CylinderGeometry(0.035, 0.055, h, 5),
+        reedStemMat,
       );
       stem.position.y = h / 2 + 0.05;
       rg.add(stem);
       const top = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.045, 0.1, 0.38, 6), reedTopMat,
+        new THREE.CylinderGeometry(0.045, 0.1, 0.38, 6),
+        reedTopMat,
       );
       top.position.y = h + 0.24;
       rg.add(top);
@@ -799,25 +842,47 @@ window.Card4 = {
     });
 
     // === 5. 연잎 (V 노치 부채꼴 + 꽃) ===
-    const lilyMat   = new THREE.MeshLambertMaterial({ color: 0x2e7d32, side: THREE.DoubleSide });
+    const lilyMat = new THREE.MeshLambertMaterial({
+      color: 0x2e7d32,
+      side: THREE.DoubleSide,
+    });
     const flowerMat = new THREE.MeshLambertMaterial({ color: 0xf8bbd0 });
     [
-      { x: -3, z:  6.0 }, { x:  4, z:  7.5 }, { x: -6, z:  6.5 }, { x:  5, z:  5.0 },
-      { x: -2, z: -5.5 }, { x:  5, z: -7.0 }, { x: -5, z: -7.5 }, { x:  2, z: -6.0 },
+      { x: -3, z: 6.0 },
+      { x: 4, z: 7.5 },
+      { x: -6, z: 6.5 },
+      { x: 5, z: 5.0 },
+      { x: -2, z: -5.5 },
+      { x: 5, z: -7.0 },
+      { x: -5, z: -7.5 },
+      { x: 2, z: -6.0 },
     ].forEach((pos) => {
       if ((pos.x / pondHalfX) ** 2 + (pos.z / pondHalfZ) ** 2 > 0.85) return;
-      const r     = 0.4 + Math.random() * 0.2;
+      const r = 0.4 + Math.random() * 0.2;
       const notch = Math.random() * Math.PI * 2;
       const lilyShape = new THREE.Shape();
       lilyShape.moveTo(0, 0);
-      lilyShape.absarc(0, 0, r, notch + 0.35, notch + Math.PI * 2 - 0.35, false);
+      lilyShape.absarc(
+        0,
+        0,
+        r,
+        notch + 0.35,
+        notch + Math.PI * 2 - 0.35,
+        false,
+      );
       lilyShape.closePath();
-      const lilyMesh = new THREE.Mesh(new THREE.ShapeGeometry(lilyShape, 12), lilyMat);
+      const lilyMesh = new THREE.Mesh(
+        new THREE.ShapeGeometry(lilyShape, 12),
+        lilyMat,
+      );
       lilyMesh.rotation.x = -Math.PI / 2;
       lilyMesh.position.set(pos.x, 0.07, pos.z);
       pondObj.add(lilyMesh);
       if (Math.random() > 0.35) {
-        const flower = new THREE.Mesh(new THREE.SphereGeometry(0.11, 6, 4), flowerMat);
+        const flower = new THREE.Mesh(
+          new THREE.SphereGeometry(0.11, 6, 4),
+          flowerMat,
+        );
         flower.scale.y = 0.55;
         flower.position.set(pos.x, 0.14, pos.z);
         pondObj.add(flower);
@@ -826,13 +891,17 @@ window.Card4 = {
 
     // === 6. 오리 (2~3마리, 트랙 제외 호수에만 배치) ===
     const trackMarginZ = trackHalfW + 2.2;
-    const duckCount    = 2 + Math.floor(Math.random() * 2);
+    const duckCount = 2 + Math.floor(Math.random() * 2);
     for (let di = 0; di < duckCount; di++) {
       const side = di % 2 === 0 ? 1 : -1;
-      let lx, lz, attempts = 0;
+      let lx,
+        lz,
+        attempts = 0;
       do {
         lx = (Math.random() - 0.5) * pondHalfX * 1.5;
-        lz = side * (trackMarginZ + Math.random() * (pondHalfZ - trackMarginZ) * 0.82);
+        lz =
+          side *
+          (trackMarginZ + Math.random() * (pondHalfZ - trackMarginZ) * 0.82);
         attempts++;
       } while (
         attempts < 60 &&
@@ -848,8 +917,10 @@ window.Card4 = {
       this.ducks.push({
         mesh: duckMesh,
         pondGroup: pondObj,
-        localX: lx,   localZ: lz,
-        targetLocalX: lx, targetLocalZ: lz,
+        localX: lx,
+        localZ: lz,
+        targetLocalX: lx,
+        targetLocalZ: lz,
         side,
         speed: 0.006 + Math.random() * 0.005,
         nextMoveTime: Math.random() * 4,
@@ -1065,10 +1136,10 @@ window.Card4 = {
 
     const group = new THREE.Group();
     [
-      { w: size, d: thick,  px: 0,  pz:  B },
-      { w: size, d: thick,  px: 0,  pz: -B },
-      { w: thick, d: size,  px:  B, pz: 0  },
-      { w: thick, d: size,  px: -B, pz: 0  },
+      { w: size, d: thick, px: 0, pz: B },
+      { w: size, d: thick, px: 0, pz: -B },
+      { w: thick, d: size, px: B, pz: 0 },
+      { w: thick, d: size, px: -B, pz: 0 },
     ].forEach(({ w, d, px, pz }) => {
       const line = new THREE.Mesh(
         new THREE.BoxGeometry(w, 0.05, d),
@@ -1459,6 +1530,79 @@ window.Card4 = {
     }
   },
 
+  // 새 트랙 세그먼트와 충돌하는 나무/집/풍차를 숨기고, 양은 빈 자리로 이동
+  removeSceneryOverlappingTrack(segment) {
+    const pts = segment.points;
+    // 이 세그먼트가 처음으로 숨긴 오브젝트만 기록 (이미 숨겨진 건 제외)
+    segment.hiddenScenery = [];
+
+    // 트랙 중심선의 점들 중 가장 가까운 거리의 제곱 반환
+    const minDist2 = (ox, oz) => {
+      let min2 = Infinity;
+      for (const p of pts) {
+        const dx = p.x - ox,
+          dz = p.z - oz;
+        const d2 = dx * dx + dz * dz;
+        if (d2 < min2) min2 = d2;
+      }
+      return min2;
+    };
+
+    // 나무: 반경 4 이내 숨기기 (아직 보이는 것만)
+    this.trees.forEach((tree) => {
+      if (tree.visible && minDist2(tree.position.x, tree.position.z) < 16) {
+        tree.visible = false;
+        segment.hiddenScenery.push(tree);
+      }
+    });
+
+    // 집: 반경 5 이내 숨기기 (index 0 = 기차역 제외, 아직 보이는 것만)
+    this.houses.forEach((house, i) => {
+      if (i === 0) return;
+      if (house.visible && minDist2(house.position.x, house.position.z) < 25) {
+        house.visible = false;
+        segment.hiddenScenery.push(house);
+      }
+    });
+
+    // 풍차: 반경 5 이내 숨기기 (아직 보이는 것만)
+    this.windmills.forEach((wm) => {
+      if (wm.visible && minDist2(wm.position.x, wm.position.z) < 25) {
+        wm.visible = false;
+        segment.hiddenScenery.push(wm);
+      }
+    });
+
+    // 양: 트랙과 겹치는 양을 빈 위치로 이동 + 하늘에서 낙하 애니메이션
+    this.sheep.forEach((s, idx) => {
+      if (minDist2(s.x, s.z) < 9) {
+        // 반경 3 이내
+        let attempts = 0;
+        let nx, nz;
+        do {
+          const side = Math.random() > 0.5 ? 1 : -1;
+          nx = side * (15 + Math.random() * 45);
+          nz = (Math.random() - 0.5) * 120;
+          attempts++;
+        } while (this.isBlocked(nx, nz, idx) && attempts < 100);
+
+        if (attempts < 100) {
+          s.x = nx;
+          s.z = nz;
+          s.targetX = nx;
+          s.targetZ = nz;
+          s.isEating = false;
+          s.isWalking = false;
+          if (s.isDancing) this.toggleSheepDance(idx);
+          s.isFalling = true;
+          s.fallY = 30;
+          s.fallVY = 0;
+          s.mesh.position.set(nx, 30, nz);
+        }
+      }
+    });
+  },
+
   /* ==================== SCENERY ==================== */
   createScenery() {
     // 나무: 역/중심 주변(r<25) 제외하고 랜덤 배치
@@ -1469,14 +1613,14 @@ window.Card4 = {
     }
 
     // 집: 고정 위치 4채
-    this.createHouse( 35, 0, -25, this.C.houseRoof,     0);
-    this.createHouse(-30, 0,  25, this.C.houseRoofBlue, Math.PI / 3);
-    this.createHouse( 55, 0,  40, this.C.houseRoof,     Math.PI / 5);
+    this.createHouse(35, 0, -25, this.C.houseRoof, 0);
+    this.createHouse(-30, 0, 25, this.C.houseRoofBlue, Math.PI / 3);
+    this.createHouse(55, 0, 40, this.C.houseRoof, Math.PI / 5);
     this.createHouse(-50, 0, -45, this.C.houseRoofBlue, -Math.PI / 4);
 
     // 풍차: 고정 위치 2개
     this.createWindmill(-25, 0, -30);
-    this.createWindmill( 60, 0,  15);
+    this.createWindmill(60, 0, 15);
 
     this.createFlowers();
     this.createPebbles();
@@ -1489,7 +1633,7 @@ window.Card4 = {
       const d = 20 + Math.random() * 68; // 20~88 범위 (역 주변 제외)
       const geo = new THREE.CylinderGeometry(
         0.15 + Math.random() * 0.2,
-        0.2  + Math.random() * 0.2,
+        0.2 + Math.random() * 0.2,
         0.07 + Math.random() * 0.06,
         5,
       );
@@ -1512,16 +1656,14 @@ window.Card4 = {
 
     const trunk = new THREE.Mesh(
       new THREE.CylinderGeometry(0.2 * sc, 0.3 * sc, tH * sc, 6),
-      new THREE.MeshLambertMaterial({ color: this.C.treeTrunk }),
+      this._treeTrunkMat,
     );
     trunk.position.y = (tH * sc) / 2;
     trunk.castShadow = true;
     tree.add(trunk);
 
-    const lc = [this.C.treeLeaf, this.C.treeLeafDark, this.C.treeLeafLight];
-    const lM = new THREE.MeshLambertMaterial({
-      color: lc[Math.floor(Math.random() * lc.length)],
-    });
+    const lM =
+      this._treeLeafMats[Math.floor(Math.random() * this._treeLeafMats.length)];
 
     if (type === 0) {
       const l = new THREE.Mesh(new THREE.SphereGeometry(1.2 * sc, 8, 6), lM);
@@ -1656,6 +1798,7 @@ window.Card4 = {
     g.add(this.windmillBlade);
 
     g.position.set(x, y, z);
+    this.windmills.push(g);
     this.scene.add(g);
   },
 
@@ -1848,12 +1991,11 @@ window.Card4 = {
     const activePupils = this.isNight ? this.moonPupils : this.sunPupils;
     if (!activeGroup || !activePupils || activePupils.length === 0) return;
 
-    const worldPos = new THREE.Vector3();
-    activeGroup.getWorldPosition(worldPos);
-    const screenPos = worldPos.clone().project(this.camera);
+    activeGroup.getWorldPosition(this._worldPos);
+    this._screenPos.copy(this._worldPos).project(this.camera);
 
-    let dx = this.mouseNDC.x - screenPos.x;
-    let dy = this.mouseNDC.y - screenPos.y;
+    let dx = this.mouseNDC.x - this._screenPos.x;
+    let dy = this.mouseNDC.y - this._screenPos.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const maxD = 2;
     if (dist > maxD) {
@@ -1940,7 +2082,7 @@ window.Card4 = {
         this.obstacleList.push({ x: cx, z: cz, r: 13 });
         // 입구/출구 포탈 영역 (벽돌이 isNearTrack 범위 밖까지 뻗어있음)
         this.obstacleList.push({ x: seg.startX, z: seg.startZ, r: 6 });
-        this.obstacleList.push({ x: seg.endX,   z: seg.endZ,   r: 6 });
+        this.obstacleList.push({ x: seg.endX, z: seg.endZ, r: 6 });
       } else {
         // 호수: 타원 수면 영역을 단일 원으로 근사
         this.obstacleList.push({ x: cx, z: cz, r: 12 });
@@ -1995,10 +2137,10 @@ window.Card4 = {
 
   /* ==================== DUCK ==================== */
   createOneDuck() {
-    const g       = new THREE.Group();
+    const g = new THREE.Group();
     const yellowM = new THREE.MeshLambertMaterial({ color: 0xffd700 });
     const orangeM = new THREE.MeshLambertMaterial({ color: 0xff8c00 });
-    const blackM  = new THREE.MeshLambertMaterial({ color: 0x111111 });
+    const blackM = new THREE.MeshLambertMaterial({ color: 0x111111 });
 
     // 몸통 (납작한 타원 구)
     const body = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), yellowM);
@@ -2020,7 +2162,10 @@ window.Card4 = {
     g.add(head);
 
     // 부리 (납작한 원뿔)
-    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.14, 5), orangeM);
+    const beak = new THREE.Mesh(
+      new THREE.ConeGeometry(0.055, 0.14, 5),
+      orangeM,
+    );
     beak.rotation.z = -Math.PI / 2;
     beak.position.set(0.43, 0.37, 0);
     g.add(beak);
@@ -2032,7 +2177,10 @@ window.Card4 = {
 
     // 날개 (좌우)
     [-1, 1].forEach((side) => {
-      const wing = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 4), yellowM);
+      const wing = new THREE.Mesh(
+        new THREE.SphereGeometry(0.18, 6, 4),
+        yellowM,
+      );
       wing.scale.set(0.55, 0.28, 0.95);
       wing.position.set(-0.02, 0.22, side * 0.28);
       g.add(wing);
@@ -2049,23 +2197,28 @@ window.Card4 = {
 
       // 새 목표 선택
       if (t > d.nextMoveTime) {
-        let nx, nz, att = 0;
+        let nx,
+          nz,
+          att = 0;
         do {
           nx = (Math.random() - 0.5) * d.halfX * 1.5;
           nz = d.side * (d.minZ + Math.random() * (d.halfZ - d.minZ) * 0.82);
           att++;
         } while (att < 50 && (nx / d.halfX) ** 2 + (nz / d.halfZ) ** 2 > 0.82);
-        if (att < 50) { d.targetLocalX = nx; d.targetLocalZ = nz; }
+        if (att < 50) {
+          d.targetLocalX = nx;
+          d.targetLocalZ = nz;
+        }
         d.nextMoveTime = t + 3 + Math.random() * 5;
       }
 
       // 목표 방향으로 이동
-      const dx   = d.targetLocalX - d.localX;
-      const dz   = d.targetLocalZ - d.localZ;
+      const dx = d.targetLocalX - d.localX;
+      const dz = d.targetLocalZ - d.localZ;
       const dist = Math.sqrt(dx * dx + dz * dz);
       if (dist > 0.15) {
         const mv = Math.atan2(dz, dx);
-        d.mesh.rotation.y = -mv;   // 부리가 진행 방향을 향하도록
+        d.mesh.rotation.y = -mv; // 부리가 진행 방향을 향하도록
         d.localX += Math.cos(mv) * d.speed;
         d.localZ += Math.sin(mv) * d.speed;
         d.mesh.position.x = d.localX;
@@ -2078,13 +2231,15 @@ window.Card4 = {
     if (this.isGlobalMuted()) return;
     try {
       if (!this.audioCtx)
-        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        this.audioCtx = new (
+          window.AudioContext || window.webkitAudioContext
+        )();
       const ctx = this.audioCtx;
       const now = ctx.currentTime;
       // 꿱꿱 두 번
       [0, 0.26].forEach((delay) => {
-        const t0   = now + delay;
-        const osc  = ctx.createOscillator();
+        const t0 = now + delay;
+        const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "sawtooth";
         osc.frequency.setValueAtTime(480, t0);
@@ -2197,7 +2352,7 @@ window.Card4 = {
         // 트랙에서 떨어진 곳에서 생성 (x: 15~55 또는 -55~-15, z: -50~50)
         const side = Math.random() > 0.5 ? 1 : -1;
         x = side * (15 + Math.random() * 68); // 15~83 범위
-        z = (Math.random() - 0.5) * 175;     // ±87.5 범위
+        z = (Math.random() - 0.5) * 175; // ±87.5 범위
         attempts++;
       } while (this.isBlocked(x, z, -1) && attempts < 100);
 
@@ -2222,6 +2377,10 @@ window.Card4 = {
         eatUntil: 0,
         isWalking: false,
         isDancing: false,
+        danceEndTime: 0,
+        isFalling: false,
+        fallY: 0,
+        fallVY: 0,
         hat: null,
         mirrorBall: null,
         mirrorLight: null,
@@ -2234,10 +2393,28 @@ window.Card4 = {
   updateSheep(t) {
     const self = this;
     this.sheep.forEach((s, idx) => {
+      // 하늘에서 떨어지는 애니메이션
+      if (s.isFalling) {
+        s.fallVY += 0.04;
+        s.fallY = Math.max(0, s.fallY - s.fallVY);
+        s.mesh.position.set(s.x, s.fallY, s.z);
+        if (s.fallY <= 0) {
+          s.isFalling = false;
+          s.nextMoveTime = t + 2; // 착지 후 잠시 대기
+        }
+        return;
+      }
+
       const legs = s.mesh.userData.legs;
 
       // 댄스 모드
       if (s.isDancing) {
+        // 5초 경과 시 댄스 종료
+        if (t >= s.danceEndTime) {
+          this.toggleSheepDance(idx);
+          return;
+        }
+
         s.isEating = false;
         s.isWalking = true;
 
@@ -2414,6 +2591,7 @@ window.Card4 = {
 
     if (s.isDancing) {
       s.isEating = false;
+      s.danceEndTime = this.clock.elapsedTime + 5;
 
       // 모자
       const hatGroup = new THREE.Group();
@@ -2456,10 +2634,18 @@ window.Card4 = {
     } else {
       if (s.hat) {
         s.mesh.remove(s.hat);
+        s.hat.traverse((c) => {
+          if (c.geometry) c.geometry.dispose();
+          if (c.material) c.material.dispose();
+        });
         s.hat = null;
       }
       if (s.mirrorBall) {
         s.mesh.remove(s.mirrorBall);
+        s.mirrorBall.traverse((c) => {
+          if (c.geometry) c.geometry.dispose();
+          if (c.material) c.material.dispose();
+        });
         s.mirrorBall = null;
       }
       if (s.mirrorLight) {
@@ -2512,7 +2698,10 @@ window.Card4 = {
       const now = ctx.currentTime;
 
       // 귀여운 기차 경적: 사인파 "toot-toot" (두 번, 피치 슬라이드 다운)
-      [[0, 880, 660], [0.38, 880, 660]].forEach(([delay, startFreq, endFreq]) => {
+      [
+        [0, 880, 660],
+        [0.38, 880, 660],
+      ].forEach(([delay, startFreq, endFreq]) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "sine";
@@ -2615,7 +2804,7 @@ window.Card4 = {
           if (c.userData && c.userData.isWindow && c.material) {
             // 밝은 노란색으로 변경 + emissive 강화
             c.material.color.setHex(0xffe066);
-            c.material.emissive = new THREE.Color(0xffaa00);
+            c.material.emissive.set(0xffaa00);
             c.material.emissiveIntensity = 1.0;
           }
         });
@@ -2638,7 +2827,7 @@ window.Card4 = {
         h.traverse((c) => {
           if (c.userData && c.userData.isWindow && c.material) {
             c.material.color.setHex(self.C.houseWindow);
-            c.material.emissive = new THREE.Color(0x000000);
+            c.material.emissive.set(0x000000);
             c.material.emissiveIntensity = 0;
           }
         });
@@ -2788,7 +2977,9 @@ window.Card4 = {
       // 오리 클릭 감지 (양보다 우선)
       const duckMeshes = [];
       this.ducks.forEach((d) => {
-        d.mesh.traverse((c) => { if (c.isMesh) duckMeshes.push(c); });
+        d.mesh.traverse((c) => {
+          if (c.isMesh) duckMeshes.push(c);
+        });
       });
       const duckHits = this.sheepRaycaster.intersectObjects(duckMeshes);
       if (duckHits.length > 0) {
@@ -2861,12 +3052,12 @@ window.Card4 = {
             ddy = e.touches[0].clientY - ts.y;
           const panSpeed = this.camRadius * 0.04;
           this.targetPanX +=
-            (-ddx * Math.sin(this.camTheta) +
+            (-ddx * Math.sin(this.camTheta) -
               ddy * Math.cos(this.camTheta) * Math.cos(this.camPhi)) *
             panSpeed *
             0.01;
           this.targetPanZ +=
-            (ddx * Math.cos(this.camTheta) +
+            (ddx * Math.cos(this.camTheta) -
               ddy * Math.sin(this.camTheta) * Math.cos(this.camPhi)) *
             panSpeed *
             0.01;
@@ -2916,10 +3107,7 @@ window.Card4 = {
   animate() {
     requestAnimationFrame(this._boundAnimate);
 
-    if (!this.isActive) {
-      this.renderer.render(this.scene, this.camera);
-      return;
-    }
+    if (!this.isActive) return;
 
     const dt = this.clock.getDelta();
     const t = this.clock.elapsedTime;
@@ -2958,12 +3146,12 @@ window.Card4 = {
       const nearBound = 90 - Math.max(Math.abs(end.x), Math.abs(end.z));
       const show = !this.isLoopClosed && nearBound < 20;
       if (show) {
-        const fade  = Math.max(0, Math.min(1, 1 - nearBound / 20));
+        const fade = Math.max(0, Math.min(1, 1 - nearBound / 20));
         const pulse = 0.5 + Math.sin(t * 5) * 0.45;
-        this.boundaryMat.opacity     = pulse * fade * 0.95;
+        this.boundaryMat.opacity = pulse * fade * 0.95;
         this.boundaryGlowMat.opacity = pulse * fade * 0.4;
       } else {
-        this.boundaryMat.opacity     = 0;
+        this.boundaryMat.opacity = 0;
         this.boundaryGlowMat.opacity = 0;
       }
     }
