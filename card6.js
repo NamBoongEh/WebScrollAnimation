@@ -22,16 +22,19 @@ window.Card6 = {
   zoomNode: null,
   isHoveringSpecial: false,
   lastHoveredId: null,
+  _mobileHoveredNode: null, // 모바일 1탭으로 고정된 hover 노드
 
   scroll: 0,
   targetScroll: 0,
   customTime: 0,
   hueTime: 0, // 항상 진행 (hover/zoom 정지 무관)
   accentColor: null,
-  lineColor: "#223355",
+  lineColor: "#3366cc",
   auroraScene: null,
   auroraCamera: null,
   auroraMesh: null,
+  starsMesh: null, // 여기! 배경 별자리용 메쉬 추가
+  shootingStars: [],
 
   // Radio 선택: 하나의 special 노드만 선택 가능
   selectedNode: null,
@@ -139,9 +142,10 @@ window.Card6 = {
   },
 
   setupTheme() {
-    const hues = [180, 260, 320, 150];
+    // 밤하늘 컨셉: 청백색 별빛 계열 (시리우스·베가·알타이르 느낌)
+    const hues = [200, 215, 235, 250];
     const selected = hues[Math.floor(Math.random() * hues.length)];
-    this.accentColor = `hsl(${selected}, 100%, 75%)`;
+    this.accentColor = `hsl(${selected}, 90%, 80%)`;
     document.documentElement.style.setProperty(
       "--aurora-color",
       this.accentColor,
@@ -176,32 +180,82 @@ window.Card6 = {
   createNodes() {
     const numSpecial = this.TRACKS.length; // tracks 수 = special 노드 수
     const numNormal = numSpecial * 5; // 일반 노드는 special의 5배
-    const specialGeo = new THREE.OctahedronGeometry(0.4, 0);
-    const normalGeo = new THREE.IcosahedronGeometry(0.18, 0);
-    const glowGeo = new THREE.SphereGeometry(0.75, 12, 12);
+    // 8각형 3D 형태: OctahedronGeometry (8면체 — 다이아몬드/크리스탈 형태)
+    const specialGeo = new THREE.OctahedronGeometry(0.52, 0);
+    const normalGeo = new THREE.OctahedronGeometry(0.19, 0);
+    // 별 스파이크 glow: billboard PlaneGeometry + ShaderMaterial (AdditiveBlending)
+    const starGlowGeo = new THREE.PlaneGeometry(3, 3);
+    const starVert = `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `;
+    const starFrag = `
+      uniform vec3 uColor;
+      uniform float uOpacity;
+      varying vec2 vUv;
+      void main() {
+        vec2 p = vUv * 2.0 - 1.0;
+        float r = length(p);
+        // 코어: 밝은 중심
+        float core = exp(-r * r * 5.0);
+        // 4방향 십자 스파이크 (수평/수직)
+        float sx = exp(-p.y*p.y*75.0) * exp(-p.x*p.x*1.1) * max(0.0, 1.0 - r*0.95);
+        float sy = exp(-p.x*p.x*75.0) * exp(-p.y*p.y*1.1) * max(0.0, 1.0 - r*0.95);
+        // 2방향 대각선 스파이크 (45°, 조금 가늘게)
+        float d1 = (p.x + p.y) * 0.7071;
+        float d2 = (p.x - p.y) * 0.7071;
+        float sd1 = exp(-d2*d2*110.0) * exp(-d1*d1*1.8) * max(0.0, 1.0 - r*1.05) * 0.5;
+        float sd2 = exp(-d1*d1*110.0) * exp(-d2*d2*1.8) * max(0.0, 1.0 - r*1.05) * 0.5;
+        float brightness = core + (sx + sy) * 0.85 + (sd1 + sd2);
+        gl_FragColor = vec4(uColor, clamp(brightness, 0.0, 1.0) * uOpacity);
+      }
+    `;
+    // 투명 hitbox: 클릭 가능 범위 확대 — 시각적 크기는 그대로
+    const hitboxGeo = new THREE.SphereGeometry(1.4, 8, 8);
+    const hitboxMat = new THREE.MeshBasicMaterial({ visible: false });
 
-    const matAccent = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(this.accentColor),
-    });
     const matWhite = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
+      color: 0xddeeff, // 청백색 별빛
       transparent: true,
-      opacity: 0.4,
+      opacity: 0.65,
     });
 
     // ── Special 노드: TRACKS.length 개, 각각 랜덤 t → 포메이션 내 랜덤 위치 ──
     for (let s = 0; s < numSpecial; s++) {
       const t = Math.random(); // 0~1 랜덤 → 포메이션 위치 랜덤화
-      const mesh = new THREE.Mesh(specialGeo, matAccent.clone());
 
-      const glowMat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(this.accentColor),
+      // 파스텔 무지개: 각 노드별 고유 hue (균등 분포) — 밝고 다채로운 색
+      const nodeHue = s / numSpecial; // 0~1 무지개 분포
+      const nodeColor = new THREE.Color().setHSL(nodeHue, 0.7, 0.82);
+
+      const mesh = new THREE.Mesh(
+        specialGeo,
+        new THREE.MeshBasicMaterial({ color: nodeColor.clone() }),
+      );
+
+      const glowMat = new THREE.ShaderMaterial({
+        uniforms: {
+          uColor: { value: nodeColor.clone() },
+          uOpacity: { value: 0.0 },
+        },
+        vertexShader: starVert,
+        fragmentShader: starFrag,
         transparent: true,
-        opacity: 0,
-        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: false,
+        side: THREE.DoubleSide,
       });
-      const glowMesh = new THREE.Mesh(glowGeo, glowMat);
-      mesh.add(glowMesh);
+      const glowMesh = new THREE.Mesh(starGlowGeo, glowMat);
+      this.scene.add(glowMesh);
+
+      // 투명 hitbox child: 실제 노드보다 3배 큰 구체 → 클릭/raycasting 범위 확대
+      const hitbox = new THREE.Mesh(hitboxGeo, hitboxMat);
+      hitbox.userData.isHitbox = true;
+      mesh.add(hitbox);
 
       const targets = {};
       ["sphere", "helix", "cube", "torus", "scatter"].forEach((f) => {
@@ -215,8 +269,10 @@ window.Card6 = {
         isSelected: false,
         trackIndex: s,
         power: Math.floor(Math.random() * 100),
-        originalColor: new THREE.Color(this.accentColor),
+        nodeHue,
+        originalColor: nodeColor.clone(),
         glowMesh,
+        hitbox,
       };
       this.scene.add(mesh);
       this.nodes.push({ mesh, targets, isSpecial: true });
@@ -374,10 +430,13 @@ window.Card6 = {
     if (this.selectedNode) {
       this.selectedNode.userData.isSelected = false;
       const gm = this.selectedNode.userData.glowMesh;
-      if (gm) gm.material.opacity = 0;
+      if (gm) gm.material.uniforms.uOpacity.value = 0;
       if (this.positionalAudio) {
         this.selectedNode.remove(this.positionalAudio);
       }
+      // hitbox를 원래 크기로 복원
+      const hitbox = this.selectedNode.userData.hitbox;
+      if (hitbox) hitbox.scale.setScalar(1);
       this.selectedNode = null;
     }
     if (this.audioEl) {
@@ -413,11 +472,14 @@ window.Card6 = {
     if (this.selectedNode) {
       this.selectedNode.userData.isSelected = false;
       const gm = this.selectedNode.userData.glowMesh;
-      if (gm) gm.material.opacity = 0;
+      if (gm) gm.material.uniforms.uOpacity.value = 0;
       // PositionalAudio를 이전 노드에서 분리
       if (this.positionalAudio) {
         this.selectedNode.remove(this.positionalAudio);
       }
+      // hitbox를 원래 크기로 복원
+      const prevHitbox = this.selectedNode.userData.hitbox;
+      if (prevHitbox) prevHitbox.scale.setScalar(1);
       this.selectedNode = null;
     }
     if (this.audioEl) {
@@ -435,6 +497,9 @@ window.Card6 = {
     mesh.userData.isSelected = true;
     this.isZoomed = true;
     this.zoomNode = mesh;
+    // hitbox를 노드 시각 크기로 축소 (0.52 / 1.4 ≈ 0.371)
+    const selHitbox = mesh.userData.hitbox;
+    if (selHitbox) selHitbox.scale.setScalar(0.52 / 1.4);
 
     const track = this.TRACKS[mesh.userData.trackIndex];
     if (!track) return;
@@ -459,6 +524,106 @@ window.Card6 = {
         .play()
         .then(() => this._updateStopBtn())
         .catch((e) => console.warn("재생 실패:", e));
+    });
+  },
+
+  createStars() {
+    const starCount = 1500;
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(starCount * 3);
+    const phase = new Float32Array(starCount);
+
+    for (let i = 0; i < starCount; i++) {
+      const r = 100 + Math.random() * 150;
+      const theta = 2 * Math.PI * Math.random();
+      const phi = Math.acos(2 * Math.random() - 1);
+
+      pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      pos[i * 3 + 2] = r * Math.cos(phi);
+
+      phase[i] = Math.random() * Math.PI * 2;
+    }
+
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute("aPhase", new THREE.BufferAttribute(phase, 1));
+
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0.0 } },
+      vertexShader: `
+        attribute float aPhase;
+        varying float vPhase;
+        void main() {
+          vPhase = aPhase;
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          // Increased from 120.0 to 450.0 to make them much more visible
+          gl_PointSize = (450.0 / -mvPosition.z); 
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        varying float vPhase;
+        void main() {
+          vec2 pt = gl_PointCoord - vec2(0.5);
+          if(dot(pt, pt) > 0.25) discard; 
+          
+          // Higher base alpha so they don't fade out completely and shine brighter
+          float alpha = 0.1 + 0.3 * sin(uTime * 0.5 + vPhase);
+          gl_FragColor = vec4(1.0, 1.0, 1.0, alpha); 
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+
+    this.starsMesh = new THREE.Points(geo, mat);
+    this.scene.add(this.starsMesh);
+  },
+
+  spawnShootingStar() {
+    const length = 15 + Math.random() * 20;
+
+    // Spawn high up and slightly in the background
+    const startPoint = new THREE.Vector3(
+      (Math.random() - 0.5) * 150,
+      80 + Math.random() * 50,
+      -50 - Math.random() * 80,
+    );
+
+    // Shoot diagonally downwards
+    const endPoint = startPoint
+      .clone()
+      .add(new THREE.Vector3(length, -length * 0.8, 0));
+
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      startPoint,
+      endPoint,
+    ]);
+    const mat = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 1.0,
+      blending: THREE.AdditiveBlending,
+    });
+
+    const line = new THREE.Line(geo, mat);
+    this.scene.add(line);
+
+    // Calculate speed and direction
+    const velocity = new THREE.Vector3(
+      endPoint.x - startPoint.x,
+      endPoint.y - startPoint.y,
+      endPoint.z - startPoint.z,
+    )
+      .normalize()
+      .multiplyScalar(1.5 + Math.random() * 2.5);
+
+    this.shootingStars.push({
+      mesh: line,
+      velocity: velocity,
+      life: 1.0,
     });
   },
 
@@ -494,8 +659,8 @@ window.Card6 = {
         void main() {
           float t = uTime;
 
-          // 배경색 #08080f
-          vec3 col = vec3(0.031, 0.031, 0.059);
+          // 배경: 거의 순수 검정 (#000103)
+          vec3 col = vec3(0.001, 0.002, 0.012);
 
           // 5개 오로라 blob — JS updateAuroraColors() 파라미터와 동일한 값 사용
           for (int i = 0; i < 5; i++) {
@@ -513,19 +678,18 @@ window.Card6 = {
             float dist2 = dx * dx + dy * dy;
             float blob  = exp(-dist2 * 2.0);
 
-            // 중심(c1) → 외곽(c2) 색상 보간 (gradient 0%→45% stop 재현)
-            float h1 = mod(t * 5.0 / 360.0 + fi * 62.0 / 360.0, 1.0);
-            float h2 = mod(h1 + 50.0 / 360.0 + sin(t * 0.25 + fi) * 20.0 / 360.0, 1.0);
-            vec3 c1 = hsl2rgb(vec3(h1, 0.85, 0.58));
-            vec3 c2 = hsl2rgb(vec3(h2, 0.80, 0.40));
+            // 밤하늘 오로라: 녹색→청록→파랑→보라 (북극광 색상 범위 0.30~0.75)
+            float h1 = 0.30 + mod(t * 3.0 / 360.0 + fi * 48.0 / 360.0, 0.45);
+            float h2 = mod(h1 + 0.09 + sin(t * 0.25 + fi) * 0.03, 1.0);
+            vec3 c1 = hsl2rgb(vec3(h1, 0.80, 0.55));
+            vec3 c2 = hsl2rgb(vec3(h2, 0.70, 0.35));
             vec3 blobCol = mix(c1, c2, smoothstep(0.0, 0.7, sqrt(dist2)));
 
-            // opacity 맥박 (JS: 0.72 + sin(t*0.4+i*1.1)*0.08)
-            float op = 0.72 + sin(t * 0.4 + fi * 1.1) * 0.08;
+            // opacity 맥박 (어두운 배경 유지를 위해 낮게)
+            float op = 0.32 + sin(t * 0.4 + fi * 1.1) * 0.05;
 
-            // Screen blend: 1-(1-A)(1-B)  ← CSS mix-blend-mode: screen 재현
-            // 0.78 = aurora-bg-6 opacity
-            col = 1.0 - (1.0 - col) * (1.0 - blobCol * blob * op * 0.78);
+            // Screen blend: 어두운 배경에 오로라 은은하게 합성
+            col = 1.0 - (1.0 - col) * (1.0 - blobCol * blob * op * 0.40);
           }
 
           gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -538,9 +702,6 @@ window.Card6 = {
   },
 
   // animate()에서 매 프레임 호출 — uTime uniform 갱신만 (GPU가 나머지 처리)
-  updateAuroraShader(t) {
-    if (this.auroraMesh) this.auroraMesh.material.uniforms.uTime.value = t;
-  },
 
   /* ==================== NODE COLOR ANIMATION ==================== */
 
@@ -549,42 +710,56 @@ window.Card6 = {
       const ud = n.mesh.userData;
       if (n.isSpecial) {
         if (ud.isSelected) {
-          // 선택됨: 금/흰색 펄스 + 회전
-          const pulse = 0.5 + Math.sin(t * 7) * 0.5;
-          n.mesh.material.color.setHSL(
-            0.12 + pulse * 0.05,
-            1,
-            0.75 + pulse * 0.2,
-          );
+          // 선택됨: 자신의 파스텔 색으로 눈부신 별 펄스 (황금색 고정 아님)
+          const pulse = 0.5 + Math.sin(t * 7) * 0.4;
+          const hue = ud.nodeHue !== undefined ? ud.nodeHue : 0.12;
+          n.mesh.material.color.setHSL(hue, 0.9, 0.75 + pulse * 0.2);
           n.mesh.scale.lerp(this._v3ScaleSelected, 0.1);
           n.mesh.rotation.y += 0.04;
-          // 외곽 glow 구체 — 선택된 노드만 빛남
           if (ud.glowMesh) {
-            ud.glowMesh.material.opacity = 0.22 + Math.sin(t * 5) * 0.14;
-            ud.glowMesh.scale.setScalar(1.4 + Math.sin(t * 4) * 0.3);
-            ud.glowMesh.material.color.setHSL(0.12 + pulse * 0.05, 1, 0.92);
+            ud.glowMesh.position.copy(n.mesh.position);
+            ud.glowMesh.quaternion.copy(this.camera.quaternion);
+            ud.glowMesh.material.uniforms.uOpacity.value =
+              0.38 + Math.sin(t * 5) * 0.18;
+            ud.glowMesh.scale.setScalar(1.35 + Math.sin(t * 8) * 0.22);
+            ud.glowMesh.material.uniforms.uColor.value.setHSL(hue, 1.0, 0.75);
           }
         } else {
-          // 미선택 special: 자연스러운 무지개 색상 순환
-          const hue = (t * 0.07 + i * 0.13) % 1;
-          n.mesh.material.color.setHSL(hue, 1, 0.72);
-          n.mesh.scale.lerp(this._v3ScaleNormal, 0.08);
-          if (ud.glowMesh) ud.glowMesh.material.opacity = 0;
+          // 미선택 special: 자신의 고유 hue로 별처럼 빛나기 (상시 glow + 강한 twinkle)
+          const twinkle = 0.1 + Math.sin(t * 2.0 + i * 1.3) * 0.3; // 0~1
+          const hue = ud.nodeHue !== undefined ? ud.nodeHue : 0.1;
+          n.mesh.material.color.setHSL(hue, 0.7, 0.78 + twinkle * 0.22); // 0.78~1.00
+          if (n.mesh !== this._hoveredMesh) {
+            n.mesh.scale.lerp(this._v3ScaleNormal, 0.08);
+          }
+          if (ud.glowMesh) {
+            ud.glowMesh.position.copy(n.mesh.position);
+            ud.glowMesh.quaternion.copy(this.camera.quaternion);
+            ud.glowMesh.material.uniforms.uOpacity.value =
+              0.14 + twinkle * 0.28; // 0.14~0.42
+            ud.glowMesh.scale.setScalar(0.85 + twinkle * 0.45); // 0.85~1.30
+            ud.glowMesh.material.uniforms.uColor.value.setHSL(hue, 0.9, 0.5);
+          }
         }
       } else {
-        // 일반 노드: 은은한 무지개 + opacity 맥박
-        const hue = (t * 0.04 + i * 0.018) % 1;
-        const opc = 0.22 + Math.sin(t * 0.4 + i * 0.31) * 0.14;
-        n.mesh.material.color.setHSL(hue, 0.55, 0.82);
-        n.mesh.material.opacity = Math.max(0.08, Math.min(0.52, opc));
+        // 일반 노드: 별 반짝임 (청백색 다중 주파수 twinkling)
+        const tw =
+          0.35 +
+          Math.sin(t * 1.4 + i * 0.93) * 0.2 +
+          Math.sin(t * 2.6 + i * 1.37) * 0.08;
+        const hue = 0.6 + Math.sin(i * 0.27) * 0.06; // 미묘한 청색 편차
+        n.mesh.material.color.setHSL(hue, 0.25, 0.9);
+        n.mesh.material.opacity = Math.max(0.1, Math.min(0.7, tw));
       }
     });
 
-    // 연결선 색상: 시간에 따라 자연스럽게 변화
+    // 연결선: 연노랑/연분홍/하얀색 계열 (천천히 변화)
     if (this.linesMesh) {
-      const lh = (t * 0.04) % 1;
-      this.linesMesh.material.color.setHSL(lh, 0.7, 0.42);
-      this.linesMesh.material.opacity = 0.14 + Math.sin(t * 0.3) * 0.07;
+      const lh = 0.08 + Math.sin(t * 0.06) * 0.07; // 0.01~0.15 (분홍~연노랑)
+      const ls = 0.35 + Math.sin(t * 0.09) * 0.15; // 0.20~0.50 (연한 채도)
+      const ll = 0.88 + Math.sin(t * 0.05) * 0.07; // 0.81~0.95 (밝음)
+      this.linesMesh.material.color.setHSL(lh, ls, ll);
+      this.linesMesh.material.opacity = 0.15 + Math.sin(t * 0.25) * 0.06;
     }
   },
 
@@ -618,6 +793,7 @@ window.Card6 = {
     this.renderer.autoClear = false;
     this.container.appendChild(this.renderer.domElement);
     this.createAuroraShader();
+    this.createStars(); // 여기! 노드를 그리기 전에 별을 먼저 생성합니다.
     this.createNodes();
     this.handleResize();
   },
@@ -635,22 +811,20 @@ window.Card6 = {
     let _touchStartX = 0,
       _touchStartY = 0,
       _prevTouchY = 0;
-    let _longPressTimer = null;
-    let _longPressActive = false; // 롱프레스로 hover 고정 중
     let _touchScrolling = false; // 드래그 스크롤 중
     let _touchTapHandled = false; // touchend 탭 처리 → click 이벤트 중복 방지
-    const LONG_PRESS_MS = 500;
     const MOVE_THRESHOLD = 10; // px
 
-    // 모바일 롱프레스 시 브라우저 기본 컨텍스트 메뉴 방지
+    // 모바일 컨텍스트 메뉴 방지
     this.container.addEventListener("contextmenu", (e) => {
       if (e.cancelable) e.preventDefault();
     });
 
-    // touchstart: 좌표 기록 + 롱프레스 타이머 시작
+    // touchstart: 좌표 기록
     this.container.addEventListener(
       "touchstart",
       (e) => {
+        if (!this._isMobile) return; // PC 터치패드 오작동 방지
         if (!this.isActive || !this.card.classList.contains("fullscreen"))
           return;
         const touch = e.touches[0];
@@ -658,27 +832,21 @@ window.Card6 = {
         _touchStartX = touch.clientX;
         _touchStartY = touch.clientY;
         _prevTouchY = touch.clientY;
-        _longPressActive = false;
         _touchScrolling = false;
         _touchTapHandled = false;
 
-        // 마우스 좌표 업데이트 (다음 프레임 raycasting → hover 감지)
+        // 마우스 좌표 업데이트 (raycasting용)
         this.mouse.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
         this.mouse.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
-
-        // 롱프레스 타이머: 500ms 후 hover 고정 + 햅틱 피드백
-        _longPressTimer = setTimeout(() => {
-          _longPressActive = true;
-          if (navigator.vibrate) navigator.vibrate(40);
-        }, LONG_PRESS_MS);
       },
       { passive: true },
     );
 
-    // touchmove: 세로 드래그 스크롤 처리 + 롱프레스 타이머 취소
+    // touchmove: 세로 드래그 스크롤 처리
     this.container.addEventListener(
       "touchmove",
       (e) => {
+        if (!this._isMobile) return; // PC 터치패드 오작동 방지
         if (!this.isActive || !this.card.classList.contains("fullscreen"))
           return;
         const touch = e.touches[0];
@@ -686,20 +854,14 @@ window.Card6 = {
         const totalDy = Math.abs(touch.clientY - _touchStartY);
         const dy = _prevTouchY - touch.clientY; // 위로 드래그 시 양수
 
-        // 이동량이 임계값 초과 → 롱프레스 타이머 취소
+        // 이동량이 임계값 초과 → 스크롤 모드, hover 해제
         if (totalDx > MOVE_THRESHOLD || totalDy > MOVE_THRESHOLD) {
-          if (_longPressTimer) {
-            clearTimeout(_longPressTimer);
-            _longPressTimer = null;
-          }
-          // 롱프레스 미활성 상태에서 이동 → 스크롤 모드, hover 해제
-          if (!_longPressActive) {
-            _touchScrolling = true;
-            this.mouse.set(-1, -1);
-          }
+          _touchScrolling = true;
+          this._mobileHoveredNode = null;
+          this.mouse.set(-1, -1);
         }
 
-        // 세로 드래그 스크롤 (롱프레스·hover 중에는 스크롤 차단)
+        // 세로 드래그 스크롤 (hover 중에는 스크롤 차단)
         if (_touchScrolling && !this.isHoveringSpecial && totalDy > totalDx) {
           this.targetScroll = Math.max(
             0,
@@ -713,42 +875,59 @@ window.Card6 = {
       { passive: false },
     );
 
-    // touchend: 탭 → 노드 선택/해제, 롱프레스 → hover 해제
+    // touchend: 1탭→tooltip+정지, 같은 노드 2탭→확대+재생
     this.container.addEventListener(
       "touchend",
       () => {
-        if (_longPressTimer) {
-          clearTimeout(_longPressTimer);
-          _longPressTimer = null;
-        }
+        if (!this._isMobile) return; // PC 터치패드 오작동 방지
 
-        if (this.isActive && this.card.classList.contains("fullscreen")) {
-          if (!_touchScrolling && !_longPressActive) {
-            // 짧은 탭 → raycasting으로 노드 선택/해제
-            this.raycaster.setFromCamera(this.mouse, this.camera);
-            const targets = this.nodes
-              .filter((n) => n.isSpecial)
-              .map((n) => n.mesh);
-            const hits = this.raycaster.intersectObjects(targets);
-            if (hits.length > 0) {
-              const nodeData = this.nodes.find(
-                (n) => n.mesh === hits[0].object,
-              );
-              if (nodeData) this.selectNode(nodeData);
-            } else {
-              if (this.isZoomed) {
-                this.isZoomed = false;
-                this.zoomNode = null;
+        if (
+          this.isActive &&
+          this.card.classList.contains("fullscreen") &&
+          !_touchScrolling
+        ) {
+          // 탭 → raycasting (hitbox 포함 — 클릭 범위 확대)
+          this.raycaster.setFromCamera(this.mouse, this.camera);
+          const targets = this.nodes
+            .filter((n) => n.isSpecial)
+            .map((n) => n.mesh.userData.hitbox || n.mesh);
+          const hits = this.raycaster.intersectObjects(targets);
+
+          if (hits.length > 0) {
+            const hit = hits[0];
+            const hitMesh = hit.object.userData.isHitbox
+              ? hit.object.parent
+              : hit.object;
+            const nodeData = this.nodes.find((n) => n.mesh === hitMesh);
+            if (this._mobileHoveredNode === hitMesh) {
+              // 같은 노드 2번째 탭
+              if (nodeData) {
+                if (this.selectedNode === hitMesh) {
+                  // 이미 재생 중인 노드 → 확대 상태 복귀 (음악 유지, 꺼지지 않음)
+                  this.isZoomed = true;
+                  this.zoomNode = hitMesh;
+                } else {
+                  // 다른 노드 → 확대 + 음악 교체
+                  this.selectNode(nodeData);
+                }
               }
+              this._mobileHoveredNode = null;
+              this.mouse.set(-1, -1);
+            } else {
+              // 새 노드 1번째 탭 → tooltip 표시 + 멈춤 (mouse 좌표 유지)
+              this._mobileHoveredNode = hitMesh;
+              if (navigator.vibrate) navigator.vibrate(20);
             }
-            _touchTapHandled = true;
-          }
-
-          // 롱프레스 종료 → hover 해제 (mouse를 화면 밖으로)
-          if (_longPressActive) {
-            _longPressActive = false;
+          } else {
+            // 빈 공간 탭 → hover/zoom 해제 (음악은 유지)
+            this._mobileHoveredNode = null;
             this.mouse.set(-1, -1);
+            if (this.isZoomed) {
+              this.isZoomed = false;
+              this.zoomNode = null;
+            }
           }
+          _touchTapHandled = true;
         }
 
         _touchScrolling = false;
@@ -765,22 +944,37 @@ window.Card6 = {
       });
     }
 
-    // 클릭 → radio 선택 (데스크톱 전용 — 터치 탭은 touchend에서 처리)
+    // 클릭 → 즉시 선택 (데스크톱 전용 — 터치 탭은 touchend에서 처리)
     this.container.addEventListener("click", (e) => {
+      if (this._isMobile) return; // 모바일: touchend가 전담 — 합성 click 이벤트 완전 무시
       if (_touchTapHandled) {
         _touchTapHandled = false;
         return;
       } // 터치 중복 방지
-      if (!this.isActive) return;
-      if (!this.card.classList.contains("fullscreen")) return;
+      if (!this.isActive || !this.card.classList.contains("fullscreen")) return;
       updateMouse(e);
       this.raycaster.setFromCamera(this.mouse, this.camera);
-      const targets = this.nodes.filter((n) => n.isSpecial).map((n) => n.mesh);
-      const hits = this.raycaster.intersectObjects(targets);
+      // hitbox(투명 큰 구체)도 포함해 클릭 범위 확대
+      const hitboxes = this.nodes
+        .filter((n) => n.isSpecial)
+        .map((n) => n.mesh.userData.hitbox || n.mesh);
+      const hits = this.raycaster.intersectObjects(hitboxes);
 
       if (hits.length > 0) {
-        const nodeData = this.nodes.find((n) => n.mesh === hits[0].object);
-        if (nodeData) this.selectNode(nodeData);
+        const hit = hits[0];
+        const hitParent = hit.object.userData.isHitbox
+          ? hit.object.parent
+          : hit.object;
+        const nodeData = this.nodes.find((n) => n.mesh === hitParent);
+        if (nodeData) {
+          if (this.selectedNode === nodeData.mesh) {
+            // PC: 같은 노드 재클릭 시 해제 없이 zoom 유지 (toggle off 없음)
+            this.isZoomed = true;
+            this.zoomNode = nodeData.mesh;
+          } else {
+            this.selectNode(nodeData);
+          }
+        }
         e.stopPropagation();
       } else {
         if (this.isZoomed) {
@@ -815,7 +1009,7 @@ window.Card6 = {
     const h = this.container.clientHeight;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(w, h, false);
+    this.renderer.setSize(w, h);
     // setSize()는 캔버스 버퍼를 재할당해 흑화면을 유발하므로
     // isActive 여부에 관계없이 즉시 현재 씬을 재렌더링해 검은 플래시 방지
     if (this.auroraScene && this.scene) {
@@ -831,22 +1025,57 @@ window.Card6 = {
     const isFullscreen = this.card.classList.contains("fullscreen");
 
     // Raycasting: 풀스크린에서만 실행 (비풀스크린에서 hover 효과 전부 차단)
-    let hovered = null;
+    let hoveredMesh = null;
     if (isFullscreen) {
-      this.raycaster.setFromCamera(this.mouse, this.camera);
-      const specialMeshes = this.nodes
-        .filter((n) => n.isSpecial)
-        .map((n) => n.mesh);
-      const intersects = this.raycaster.intersectObjects(specialMeshes);
-      hovered = intersects.length > 0 ? intersects[0] : null;
+      if (this._isMobile && this._mobileHoveredNode) {
+        // 모바일 1탭 후 hover 고정: 카메라가 회전해도 tooltip 유지
+        hoveredMesh = this._mobileHoveredNode;
+      } else if (!this._isMobile) {
+        // PC: mousemove raycasting — hitbox(투명 큰 구체)도 포함
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const hitboxes = this.nodes
+          .filter((n) => n.isSpecial)
+          .map((n) => n.mesh.userData.hitbox || n.mesh);
+        const intersects = this.raycaster.intersectObjects(hitboxes);
+        if (intersects.length > 0) {
+          const hit = intersects[0];
+          hoveredMesh = hit.object.userData.isHitbox
+            ? hit.object.parent
+            : hit.object;
+        }
+      }
     }
 
-    this.isHoveringSpecial = !!hovered;
+    this._hoveredMesh = hoveredMesh; // updateNodeColors()가 scale 충돌 방지용으로 참조
+    this.isHoveringSpecial = !!hoveredMesh;
     const effectiveDt = this.isHoveringSpecial || this.isZoomed ? 0 : dt;
     this.customTime += effectiveDt;
 
-    // 오로라 shader uniform 업데이트 (실제 렌더링은 animate()에서 auroraScene으로 수행)
-    this.updateAuroraShader(this.hueTime);
+    // 배경 별: 매우 느린 y축 회전 + 반짝임 시간 갱신
+    if (this.starsMesh) {
+      this.starsMesh.material.uniforms.uTime.value = this.hueTime;
+    }
+
+    // Occasional shooting stars (about 0.5% chance per frame)
+    if (Math.random() < 0.005) {
+      this.spawnShootingStar();
+    }
+
+    // Update shooting stars movement and fading
+    for (let i = this.shootingStars.length - 1; i >= 0; i--) {
+      const star = this.shootingStars[i];
+      star.mesh.position.add(star.velocity);
+      star.life -= dt * 1.2; // Fades out over roughly 0.8 seconds
+
+      if (star.life <= 0) {
+        this.scene.remove(star.mesh);
+        star.mesh.geometry.dispose();
+        star.mesh.material.dispose();
+        this.shootingStars.splice(i, 1);
+      } else {
+        star.mesh.material.opacity = star.life;
+      }
+    }
 
     // Scroll & Formations
     this.scroll += (this.targetScroll - this.scroll) * 0.1;
@@ -858,7 +1087,7 @@ window.Card6 = {
 
     if (sub > 0.05 && sub < 0.95) {
       this.parallaxText.textContent = formations[idx + 1];
-      this.parallaxText.style.opacity = Math.sin(sub * Math.PI) * 0.5;
+      this.parallaxText.style.opacity = Math.sin(sub * Math.PI) * 0.8;
     } else {
       this.parallaxText.style.opacity = 0;
     }
@@ -873,8 +1102,8 @@ window.Card6 = {
       );
       const targetPos = this._v3CamTarget;
 
-      if (hovered && hovered.object === n.mesh) {
-        n.mesh.scale.lerp(this._v3ScaleHovered, 0.1);
+      if (hoveredMesh === n.mesh) {
+        n.mesh.scale.lerp(this._v3ScaleHovered, 0.2);
       } else if (n.mesh.userData.isSelected) {
         // 선택된 노드는 포메이션에 느리게 따라감
         n.mesh.position.lerp(targetPos, 0.03);
@@ -908,9 +1137,9 @@ window.Card6 = {
     // 공간음향: THREE.PositionalAudio + AudioListener가 renderer.render() 시
     // 자동으로 위치를 갱신하므로 수동 업데이트 불필요.
 
-    // Tooltip (풀스크린 전용 — hovered는 isFullscreen일 때만 non-null)
-    if (hovered) {
-      const d = hovered.object.userData;
+    // Tooltip (풀스크린 전용 — hoveredMesh는 클릭 고정 시에만 non-null)
+    if (hoveredMesh) {
+      const d = hoveredMesh.userData;
       const track = d.trackIndex >= 0 ? this.TRACKS[d.trackIndex] : null;
 
       if (this.lastHoveredId !== d.id) {

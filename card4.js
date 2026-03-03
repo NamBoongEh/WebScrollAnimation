@@ -163,6 +163,9 @@ window.Card4 = {
     this.isInitialized = true;
     this.clock = new THREE.Clock();
     this._boundAnimate = this.animate.bind(this);
+    this._needsRender = true; // 초기 렌더 필요
+    this._lastW = 0;
+    this._lastH = 0;
     this._trackWoodMat = new THREE.MeshLambertMaterial({
       color: this.C.trackWood,
     });
@@ -3099,15 +3102,28 @@ window.Card4 = {
     const r = this.container.getBoundingClientRect();
     const w = Math.round(r.width) || 1,
       h = Math.round(r.height) || 1;
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(w, h, false);
+    // 실제 크기가 바뀔 때만 setSize 호출 (setSize는 캔버스를 검정으로 초기화함)
+    if (this._lastW !== w || this._lastH !== h) {
+      this._lastW = w;
+      this._lastH = h;
+      this.camera.aspect = w / h;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(w, h, false);
+      this._needsRender = true; // 리사이즈 후 재렌더 필요
+    }
   },
 
   animate() {
     requestAnimationFrame(this._boundAnimate);
 
-    if (!this.isActive) return;
+    if (!this.isActive) {
+      // 비활성 상태에서도 리사이즈 후 한 번 렌더 (캔버스 검정 방지)
+      if (this._needsRender) {
+        this._needsRender = false;
+        this.renderer.render(this.scene, this.camera);
+      }
+      return;
+    }
 
     const dt = this.clock.getDelta();
     const t = this.clock.elapsedTime;

@@ -171,6 +171,7 @@ var ThreeStack = {
         cScale: 1,
         cOpacity: i === 0 ? 1 : 0,
         cBrightness: 1,
+        cBlur: 0,
         // 목표값
         tx: 0,
         ty: 0,
@@ -178,6 +179,7 @@ var ThreeStack = {
         tScale: 1,
         tOpacity: i === 0 ? 1 : 0,
         tBrightness: 1,
+        tBlur: 0,
         // 상태
         visible: i === 0,
         tVisible: i === 0,
@@ -224,6 +226,8 @@ var ThreeStack = {
    */
   getPreset(diff) {
     var h = this.cardH;
+    // 세로로 긴 화면 (모바일 세로 등): 이전 카드를 더 위로 올려 덜 보이게
+    var isPortrait = window.innerHeight / window.innerWidth > 1.3;
     if (diff === 0) {
       return {
         x: 0,
@@ -233,28 +237,31 @@ var ThreeStack = {
         opacity: 1,
         visible: true,
         brightness: 1,
+        blur: 0,
       };
     }
     if (diff === -1) {
       return {
         x: 0,
-        y: -h * 0.55,
+        y: isPortrait ? -h * 0.72 : -h * 0.465,
         z: -400,
         scale: 0.5,
         opacity: 1,
         visible: true,
         brightness: 0.9,
+        blur: 6,
       };
     }
     if (diff <= -2) {
       return {
         x: 0,
-        y: -h * 0.65,
+        y: isPortrait ? -h * 0.82 : -h * 0.465,
         z: -700,
         scale: 0.4,
         opacity: 1,
         visible: false,
         brightness: 0.85,
+        blur: 10,
       };
     }
     // diff >= 1 (다음 카드들)
@@ -266,6 +273,7 @@ var ThreeStack = {
       opacity: 0,
       visible: false,
       brightness: 1,
+      blur: 0,
     };
   },
 
@@ -284,6 +292,7 @@ var ThreeStack = {
       obj.userData.tOpacity = p.opacity;
       obj.userData.tVisible = p.visible;
       obj.userData.tBrightness = p.brightness;
+      obj.userData.tBlur = p.blur;
       obj.userData.interactive = diff === 0;
     });
   },
@@ -333,6 +342,7 @@ var ThreeStack = {
       d.cScale = d.tScale = p.scale;
       d.cOpacity = d.tOpacity = p.opacity;
       d.cBrightness = d.tBrightness = p.brightness;
+      d.cBlur = d.tBlur = p.blur;
       d.visible = d.tVisible = p.visible;
       d.interactive = diff === 0;
 
@@ -350,7 +360,9 @@ var ThreeStack = {
 
       obj.visible = p.visible;
       obj.element.style.opacity = p.opacity;
-      obj.element.style.filter = "brightness(" + p.brightness + ")";
+      var filterStr = "brightness(" + p.brightness + ")";
+      if (p.blur > 0) filterStr += " blur(" + p.blur + "px)";
+      obj.element.style.filter = filterStr;
       obj.element.style.pointerEvents = diff === 0 ? "auto" : "none";
     });
   },
@@ -441,11 +453,18 @@ var ThreeStack = {
         obj.element.style.opacity = d.cOpacity;
       }
 
-      // Brightness lerp
+      // Brightness + Blur lerp
       var prevBrightness = d.cBrightness;
+      var prevBlur = d.cBlur;
       d.cBrightness = Utils.lerp(d.cBrightness, d.tBrightness, speed);
-      if (Math.abs(d.cBrightness - prevBrightness) > 0.001) {
-        obj.element.style.filter = "brightness(" + d.cBrightness + ")";
+      d.cBlur = Utils.lerp(d.cBlur, d.tBlur, speed);
+      if (
+        Math.abs(d.cBrightness - prevBrightness) > 0.001 ||
+        Math.abs(d.cBlur - prevBlur) > 0.05
+      ) {
+        var filterStr = "brightness(" + d.cBrightness + ")";
+        if (d.cBlur > 0.1) filterStr += " blur(" + d.cBlur.toFixed(1) + "px)";
+        obj.element.style.filter = filterStr;
       }
 
       // 완전히 투명해지면 숨김
@@ -590,6 +609,10 @@ var App = {
     if (!card) return;
 
     var cardId = card.id;
+    if (cardId === "card-3" && window.Card3) {
+      if (active) Card3.activate();
+      else Card3.deactivate();
+    }
     if (cardId === "card-4" && window.Card4) {
       if (active) Card4.activate();
       else Card4.deactivate();
@@ -598,7 +621,6 @@ var App = {
       if (active) Card6.activate();
       else Card6.deactivate();
     }
-    // 필요 시 다른 카드 추가
   },
 
   bindEvents() {
@@ -1050,6 +1072,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Card 모듈 초기화 (각 card*.js에서 window에 등록)
   if (window.Card1) Card1.init();
   if (window.Card2) Card2.init();
+  if (window.Card3) Card3.init();
   if (window.Card4) Card4.init();
   if (window.Card5) Card5.init();
   if (window.Card6) Card6.init();

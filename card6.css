@@ -8,7 +8,7 @@
   height: 100%;
   overflow: hidden;
   border-radius: 24px;
-  background: #08080f;
+  background: #01020d; /* 밤하늘 깊은 네이비 */
   transition: border-radius 0.6s ease;
   cursor: default;
 }
@@ -34,7 +34,7 @@
   transform: translate(-50%, -50%);
   font-size: 10vw;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
   pointer-events: none;
   z-index: 5;
   letter-spacing: 0.3em;
@@ -50,21 +50,26 @@
   pointer-events: none;
   background: rgba(0, 0, 0, 0.85);
   border-left: 3px solid var(--node-accent);
-  padding: 12px;
+  padding: 12px 16px;
   font-family: "Courier New", monospace;
-  min-width: 180px;
+  /* 콘텐츠 너비 기준으로 자동 확장, 최대 560px */
+  width: max-content;
+  min-width: 160px;
+  max-width: min(560px, calc(100vw - 32px));
+  /* 숨김: 오른쪽에서 clip-path로 완전히 가림 */
   opacity: 0;
-  transform: translateY(10px);
+  clip-path: inset(0 100% 0 0 round 4px);
   transition:
-    opacity 0.3s,
-    transform 0.3s;
+    clip-path 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.25s ease;
   border-radius: 4px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 #node-tooltip-6.visible {
   opacity: 1;
-  transform: translateY(0);
+  /* 표시: 왼쪽→오른쪽으로 너비가 늘어나며 등장 */
+  clip-path: inset(0 0% 0 0 round 4px);
 }
 
 .typewriter {
@@ -72,28 +77,28 @@
   font-size: 13px;
   margin: 4px 0;
   white-space: nowrap;
-  overflow: hidden;
-  width: 0;
+  /* clip-path로 숨김 — width: 0 없음 → 부모 max-content 계산에 정확히 반영 */
+  clip-path: inset(0 100% 0 0);
   border-right: 2px solid var(--node-accent);
 }
 
-/* Typing Animations */
+/* Typing Animations — clip-path 방식으로 텍스트 잘림 없이 왼쪽→오른쪽 reveal */
 #node-tooltip-6.visible #tp-id {
-  animation: typing 0.5s steps(20, end) forwards 0.2s;
+  animation: typing 0.5s steps(30, end) forwards 0.2s;
 }
 #node-tooltip-6.visible #tp-stat {
-  animation: typing 0.5s steps(20, end) forwards 0.6s;
+  animation: typing 0.5s steps(30, end) forwards 0.6s;
 }
 #node-tooltip-6.visible #tp-sig {
-  animation: typing 0.5s steps(20, end) forwards 1s;
+  animation: typing 0.4s steps(20, end) forwards 1s;
 }
 
 @keyframes typing {
   from {
-    width: 0;
+    clip-path: inset(0 100% 0 0);
   }
   to {
-    width: 100%;
+    clip-path: inset(0 0% 0 0);
     border-right-color: transparent;
   }
 }
@@ -104,25 +109,20 @@
   bottom: max(90px, calc(72px + env(safe-area-inset-bottom)));
   left: 50%;
   transform: translateX(-50%);
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 0.75rem;
+  color: rgba(180, 215, 255, 1); /* 별빛 청백색 */
+  font-size: 0.9rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.5s ease;
   z-index: 20;
   white-space: nowrap;
+  text-shadow: 0 0 12px rgba(100, 180, 255, 0.8), 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
 .card.fullscreen .c6-click-hint {
   opacity: 1;
   animation: c6-fade-pulse 3s ease-in-out infinite;
-}
-
-@keyframes c6-fade-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
 }
 
 /* 스크롤 힌트 */
@@ -131,8 +131,8 @@
   bottom: max(120px, calc(100px + env(safe-area-inset-bottom)));
   left: 50%;
   transform: translateX(-50%);
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 0.7rem;
+  color: rgba(160, 205, 255, 1); /* 별빛 청백색 */
+  font-size: 1rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   pointer-events: none;
@@ -140,6 +140,7 @@
   opacity: 0;
   transition: opacity 0.5s ease;
   white-space: nowrap;
+  text-shadow: 0 0 12px rgba(80, 160, 255, 0.8), 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
 .card.fullscreen .c6-scroll-hint {
@@ -151,9 +152,19 @@
   animation: c6-scroll-bounce 2s ease-in-out infinite;
 }
 
+@keyframes c6-fade-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
 @keyframes c6-scroll-bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
 /* 즉시 정지 버튼 */
@@ -177,7 +188,10 @@
   opacity: 0;
   pointer-events: none;
   transform: translateY(6px);
-  transition: opacity 0.3s ease, transform 0.3s ease, background 0.2s;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease,
+    background 0.2s;
   backdrop-filter: blur(6px);
   max-width: 320px;
 }
@@ -218,7 +232,7 @@
   position: absolute;
   top: max(24px, calc(12px + env(safe-area-inset-top)));
   left: max(24px, calc(12px + env(safe-area-inset-left)));
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(200, 225, 255, 1); /* 밝은 별빛 청백 */
   font-family: "Courier New", monospace;
   font-size: 0.8rem;
   letter-spacing: 0.2em;
@@ -227,6 +241,7 @@
   z-index: 20;
   opacity: 0;
   transition: opacity 0.3s ease;
+  text-shadow: 0 0 10px rgba(120, 190, 255, 0.9), 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
 .card.fullscreen #phase-indicator-6 {
@@ -241,18 +256,39 @@
 
   #node-tooltip-6 {
     padding: 14px 16px;
-    /* 화면 가장자리에서 벗어나지 않도록 */
     max-width: calc(100vw - 32px);
-    min-width: 220px;
+    min-width: 180px;
   }
 
   .typewriter {
-    font-size: 26px; /* 데스크탑(13px)의 2배 */
+    font-size: 14px;
+    /* 모바일: 긴 제목이 잘리지 않도록 줄바꿈 허용 */
+    white-space: pre-wrap;
+    word-break: break-word;
+    /* clip-path 대신 opacity 애니메이션 (줄바꿈 시 clip-path 불자연스러움) */
+    clip-path: none;
+    opacity: 0;
+  }
+
+  /* 모바일 typing: opacity fade-in */
+  #node-tooltip-6.visible #tp-id {
+    animation: typing-mobile 0.35s ease forwards 0.2s;
+  }
+  #node-tooltip-6.visible #tp-stat {
+    animation: typing-mobile 0.35s ease forwards 0.55s;
+  }
+  #node-tooltip-6.visible #tp-sig {
+    animation: typing-mobile 0.3s ease forwards 0.9s;
+  }
+
+  @keyframes typing-mobile {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); border-right-color: transparent; }
   }
 
   .c6-click-hint,
   .c6-scroll-hint {
-    font-size: 0.65rem;
+    font-size: 0.9rem;
   }
 
   #c6-stop-btn {
