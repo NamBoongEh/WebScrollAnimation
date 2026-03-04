@@ -8,29 +8,180 @@
   cursor: default;
 }
 
+/* ── Dock 패널 ── */
 .c3-track-dock {
   position: absolute;
   bottom: 20px;
   left: 20px;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 15px;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  background: rgba(245, 225, 185, 0.93);
+  padding: 14px 16px;
+  border-radius: 16px;
+  box-shadow:
+    0 4px 20px rgba(80, 40, 10, 0.28),
+    inset 0 1px 0 rgba(255, 248, 220, 0.7);
   font-family: "Segoe UI", sans-serif;
-  min-width: 180px;
+  min-width: 160px;
+  border: 1px solid rgba(170, 120, 60, 0.35);
+  backdrop-filter: blur(4px);
 }
 
+.c3-inventory {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+/* ── 타일 미리보기 ── */
+.c3-tile-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.tile-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  color: #8a5a28;
+  text-transform: uppercase;
+  align-self: flex-start;
+}
+
+/* ── 3D 미리보기 컨테이너 ── */
+.c3-preview-container {
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(140, 90, 40, 0.45);
+  box-shadow: 0 2px 8px rgba(80, 40, 10, 0.22);
+  background: #f2e4c4;
+  display: block;
+  flex-shrink: 0;
+}
+
+.c3-preview-container canvas {
+  display: block;
+}
+
+/* ── 회전 버튼 행 ── */
+.c3-rotate-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.c3-rot-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5a3010;
+  min-width: 36px;
+  text-align: center;
+}
+
+/* ── 남은 타일 수 ── */
+.c3-tile-count {
+  font-size: 12px;
+  color: #5a3818;
+  padding: 5px 9px;
+  background: rgba(180, 130, 60, 0.15);
+  border-radius: 8px;
+}
+
+/* ── 회전 버튼 ── */
 .c3-rotate-btn {
-  background: #4b2c20;
-  color: white;
+  background: linear-gradient(155deg, #7a4a22, #562e10);
+  color: #ffecd0;
   border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: 7px 12px;
+  border-radius: 10px;
   cursor: pointer;
-  margin-top: 10px;
-  transition: transform 0.1s;
+  font-size: 16px;
+  font-weight: 600;
+  transition: transform 0.1s, box-shadow 0.1s, background 0.15s;
+  box-shadow: 0 2px 7px rgba(60, 25, 5, 0.38);
+  line-height: 1;
+}
+
+.c3-rotate-btn:hover {
+  background: linear-gradient(155deg, #8a5a32, #664020);
+  box-shadow: 0 3px 10px rgba(60, 25, 5, 0.5);
 }
 
 .c3-rotate-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
+  box-shadow: 0 1px 4px rgba(60, 25, 5, 0.3);
+}
+
+/* ── 힌트 텍스트 ── */
+.c3-face-hint {
+  font-size: 11px;
+  color: #8a6040;
+  line-height: 1.5;
+  padding: 6px 8px;
+  background: rgba(180, 130, 60, 0.1);
+  border-radius: 8px;
+  text-align: center;
+}
+
+/* ── 점수 표시 (상단 중앙) ── */
+.c3-score-display {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: rgba(245, 225, 185, 0.92);
+  padding: 8px 22px;
+  border-radius: 14px;
+  box-shadow: 0 3px 14px rgba(80, 40, 10, 0.28);
+  border: 1px solid rgba(170, 120, 60, 0.35);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.c3-score-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #8a5a28;
+  text-transform: uppercase;
+}
+
+.c3-score-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: #5a2e08;
+  line-height: 1;
+  font-family: "Segoe UI", sans-serif;
+}
+
+/* ── 점수 획득 팝업 ── */
+.c3-score-popup {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 28px;
+  font-weight: 800;
+  color: #d4700a;
+  text-shadow:
+    0 2px 8px rgba(200, 100, 0, 0.5),
+    0 0 0 2px rgba(255, 248, 220, 0.8);
+  pointer-events: none;
+  user-select: none;
+  animation: c3-popup-rise 1.2s ease-out forwards;
+  font-family: "Segoe UI", sans-serif;
+}
+
+@keyframes c3-popup-rise {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.7); }
+  30%  { opacity: 1; transform: translate(-50%, -70%) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -120%) scale(1.0); }
 }
