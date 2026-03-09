@@ -17,7 +17,6 @@
   width: 100%;
   height: 100%;
   display: block;
-  border-radius: 24px;
   overflow: hidden;
   transition: border-radius 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -26,13 +25,6 @@
   display: block;
   width: 100% !important;
   height: 100% !important;
-}
-
-.card.fullscreen #train-container {
-  border-radius: 0;
-}
-.card.shrinking #train-container {
-  border-radius: 24px;
 }
 
 #card-4 .close-btn {
@@ -360,7 +352,24 @@
   opacity: 0;
 }
 
-/* ===== 반응형 ===== */
+/* ===== 태블릿 (769px ~ 1024px): 좌측 트랙독만 소형화 ===== */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .c4-track-dock {
+    padding: 8px;
+    gap: 6px;
+  }
+  .c4-track-btn {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+  }
+  .c4-track-icon {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* ===== 모바일 (≤ 768px) ===== */
 @media (max-width: 768px) {
   .c4-compass {
     right: max(12px, calc(8px + env(safe-area-inset-right)));
@@ -371,32 +380,46 @@
     font-size: 18px;
   }
 
+  /* 하단 독: 전체 버튼이 화면 안에 다 들어오도록 소형화 */
   .c4-dock {
     bottom: max(75px, calc(60px + env(safe-area-inset-bottom)));
-    gap: 6px;
-    padding: 6px 10px;
+    gap: 5px;
+    padding: 5px 8px;
   }
   .c4-dock-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 17px;
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
     flex-shrink: 0;
   }
+  .c4-dock-divider {
+    height: 24px;
+    margin: 0 1px;
+  }
+  .c4-wagon-counter {
+    font-size: 14px;
+    min-width: 28px;
+  }
 
+  /* 좌측 트랙독: 모바일에서 소형화 */
   .c4-track-dock {
-    bottom: max(160px, calc(145px + env(safe-area-inset-bottom)));
-    left: max(12px, calc(8px + env(safe-area-inset-left)));
-    padding: 8px;
-    gap: 6px;
+    bottom: max(140px, calc(125px + env(safe-area-inset-bottom)));
+    left: max(10px, calc(6px + env(safe-area-inset-left)));
+    padding: 6px;
+    gap: 4px;
+  }
+  .c4-track-dock-title {
+    font-size: 0.6rem;
+    margin-bottom: 2px;
   }
   .c4-track-btn {
-    width: 42px;
-    height: 42px;
-    font-size: 19px;
+    width: 34px;
+    height: 34px;
+    font-size: 17px;
   }
   .c4-track-icon {
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
   }
 
   .c4-title {
@@ -457,32 +480,36 @@
 /* ===== 초소형 폰 (≤ 380px) ===== */
 @media (max-width: 380px) {
   .c4-dock {
-    gap: 4px;
-    padding: 5px 8px;
+    gap: 3px;
+    padding: 4px 6px;
   }
   .c4-dock-btn {
-    width: 34px;
-    height: 34px;
-    font-size: 15px;
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
   }
   .c4-dock-divider {
-    height: 24px;
-    margin: 0 1px;
+    height: 22px;
+    margin: 0;
   }
   .c4-wagon-counter {
-    font-size: 13px;
-    min-width: 28px;
+    font-size: 12px;
+    min-width: 22px;
+  }
+  .c4-track-dock {
+    padding: 5px;
+    gap: 3px;
   }
   .c4-track-btn {
-    width: 38px;
-    height: 38px;
-    font-size: 17px;
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
   }
   .c4-track-icon {
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
   }
   .c4-track-dock-title {
-    font-size: 0.6rem;
+    font-size: 0.55rem;
   }
 }

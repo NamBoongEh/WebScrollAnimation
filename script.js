@@ -243,7 +243,7 @@ var ThreeStack = {
     if (diff === -1) {
       return {
         x: 0,
-        y: isPortrait ? -h * 0.72 : -h * 0.465,
+        y: isPortrait ? -h * 0.5 : -h * 0.465,
         z: -400,
         scale: 0.5,
         opacity: 1,
@@ -255,7 +255,7 @@ var ThreeStack = {
     if (diff <= -2) {
       return {
         x: 0,
-        y: isPortrait ? -h * 0.82 : -h * 0.465,
+        y: isPortrait ? -h * 0.5 : -h * 0.465,
         z: -700,
         scale: 0.4,
         opacity: 1,
@@ -629,7 +629,7 @@ var App = {
     // Card clicks (풀스크린 진입)
     this.cards.forEach(function (card, i) {
       card.addEventListener("click", function (e) {
-        if (i === self.current && !self.isFullscreen && !self.isAnimating) {
+        if (i === self.current && !self.isFullscreen && !self.isAnimating && !card.dataset.wip) {
           e.stopPropagation();
           self.enterFullscreen(i);
         }
@@ -1091,17 +1091,15 @@ document.addEventListener("DOMContentLoaded", function () {
       if (isMuted) {
         muteBtn.classList.add("unmuted");
         if (muteIcon) muteIcon.textContent = "🔊";
-        // 현재 재생 중인 Card6 오디오 볼륨 복원
-        if (window.Card6 && window.Card6.positionalAudio) {
-          window.Card6.positionalAudio.setVolume(1.0);
-        }
+        // 즉시 음소거 해제: _mediaElPlayer.volume 복원 (데스크탑 MediaElementSource 소스 신호 복원)
+        if (window.Card6 && window.Card6._mediaElPlayer)
+          window.Card6._mediaElPlayer.volume = 1;
       } else {
         muteBtn.classList.remove("unmuted");
         if (muteIcon) muteIcon.textContent = "🔇";
-        // 현재 재생 중인 Card6 오디오 음소거
-        if (window.Card6 && window.Card6.positionalAudio) {
-          window.Card6.positionalAudio.setVolume(0);
-        }
+        // 즉시 음소거: Card6 updateScene에서 다음 프레임에도 자동 반영
+        if (window.Card6 && window.Card6._mediaElPlayer)
+          window.Card6._mediaElPlayer.volume = 0;
       }
     });
   }

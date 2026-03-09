@@ -149,6 +149,14 @@
           >
             🔄
           </button>
+          <span class="c4-dock-divider"></span>
+          <button
+            class="c4-dock-btn"
+            id="c4-screenshot-btn"
+            title="스크린샷 저장"
+          >
+            📷
+          </button>
         </div>
         <div class="c4-hint c4-controls">
           <span class="c4-hint-text">Drag to rotate</span>
@@ -160,16 +168,25 @@
       <!-- Card 6: Three.js 기하학적 파티클 모핑 -->
       <section class="card" id="card-6">
         <div id="three-container-6"></div>
-        <div id="phase-indicator-6">SPHERE</div>
+        <div id="phase-indicator-6">
+          On PC, you can enjoy an even more special 3D spatial audio experience
+        </div>
         <div class="c6-scroll-hint"><span>↕ Scroll to morph</span></div>
         <div class="c6-click-hint">Click special nodes to interact</div>
         <button class="close-btn">뒤로가기</button>
       </section>
 
       <!-- Card 3: Three.js Dorfromantik style Zen Game -->
-      <section class="card" id="card-3">
+      <section class="card" id="card-3" data-wip="true">
         <div id="three-container-3"></div>
-        <div class="c4-preview-label">under construction...</div>
+
+        <!-- 공사중 오버레이 -->
+        <div class="c3-wip-overlay">
+          <div class="c3-wip-content">
+            <div class="c3-wip-icon">🚧</div>
+            <div class="c3-wip-title">Under Construction</div>
+          </div>
+        </div>
 
         <div class="c3-track-dock c3-controls"></div>
         <button class="close-btn">뒤로가기</button>

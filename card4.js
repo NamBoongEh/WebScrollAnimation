@@ -196,6 +196,7 @@ window.Card4 = {
     this.renderer = new THREE.WebGLRenderer({
       antialias: !this.isMobile,
       alpha: false,
+      preserveDrawingBuffer: true,
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
@@ -2917,6 +2918,10 @@ window.Card4 = {
       if (hornBtn) hornBtn.textContent = this.hornEnabled ? "🔔" : "🔕";
     });
 
+    _btn("c4-screenshot-btn", () => {
+      this.takeScreenshot();
+    });
+
     // 마우스 + 드래그 + 양 클릭
     let dragging = false,
       dragBtn = -1,
@@ -3058,12 +3063,12 @@ window.Card4 = {
             (-ddx * Math.sin(this.camTheta) -
               ddy * Math.cos(this.camTheta) * Math.cos(this.camPhi)) *
             panSpeed *
-            0.01;
+            0.03;
           this.targetPanZ +=
             (ddx * Math.cos(this.camTheta) -
               ddy * Math.sin(this.camTheta) * Math.cos(this.camPhi)) *
             panSpeed *
-            0.01;
+            0.03;
           this.targetPanX = Math.max(-60, Math.min(60, this.targetPanX));
           this.targetPanZ = Math.max(-60, Math.min(60, this.targetPanZ));
           ts = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -3074,7 +3079,7 @@ window.Card4 = {
           );
           this.targetRadius = Math.max(
             30,
-            Math.min(120, this.targetRadius - (nd - td) * 0.1),
+            Math.min(120, this.targetRadius - (nd - td) * 0.3),
           );
           td = nd;
         }
@@ -3095,6 +3100,34 @@ window.Card4 = {
   },
   deactivate() {
     this.isActive = false;
+  },
+
+  takeScreenshot() {
+    if (!this.renderer) return;
+    // 현재 프레임을 한 번 렌더하고 즉시 캡처
+    this.renderer.render(this.scene, this.camera);
+    const dataURL = this.renderer.domElement.toDataURL("image/png");
+
+    const ts = new Date()
+      .toISOString()
+      .slice(0, 19)
+      .replace("T", "_")
+      .replace(/:/g, "-");
+    const filename = `choo-choo-world_${ts}.png`;
+
+    // iOS Safari는 download 속성 미지원 → 새 탭 열기
+    const isIOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIOS) {
+      window.open(dataURL, "_blank");
+    } else {
+      const a = document.createElement("a");
+      a.href = dataURL;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   },
 
   handleResize() {

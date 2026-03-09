@@ -45,77 +45,79 @@ window.Card6 = {
   _v3ScaleNormal: null,
   _v3CamTarget: null,
 
-  // Three.js 공간음향 (AudioListener → 카메라, PositionalAudio → 선택된 노드)
-  listener: null, // THREE.AudioListener
-  positionalAudio: null, // THREE.PositionalAudio
-  audioEl: null,
+  audioLoader: null,
+  audioListener: null,
+  positionalAudio: null,
+  _rawCache: {},    // src → ArrayBuffer (압축 MP3, ~3-8MB/track, 프리페치 저장소)
+  _bufferCache: {}, // src → AudioBuffer (디코딩 완료, 재생된 트랙만)
 
-  // 공개 도메인 클래식 음악 10곡 (special 노드 10개에 1:1 매핑)
+  // 공개 도메인 클래식 음악 13곡 — Internet Archive "Classical Music Mix" (Public Domain Mark 1.0)
+  // https://archive.org/details/classical-music-mix-by-various-artists
   TRACKS: [
     {
-      title: "01-Beethoven-Piano_Sonata_No32_op111-Michelangeli1962-Track01",
+      title: "Moonlight Sonata — Adagio / Presto",
       composer: "Beethoven",
-      scr: "/Song/01.mp3",
+      scr: "https://archive.org/download/classical-music-mix-by-various-artists/07%20-%20Beethoven%20-%20Piano%20Sonata%2C%20No.%2014%20in%20C%23%20Minor%2C%20Op.%2027%2C%20No.%202%2C%20Moonlight%20Adagio_Presto.mp3",
     },
     {
-      title: "02-Beethoven-Piano_Sonata_No32_op111-Michelangeli1962-Track02",
+      title: "Für Elise",
       composer: "Beethoven",
-      scr: "/Song/02.mp3",
+      scr: "https://archive.org/download/classical-music-mix-by-various-artists/18%20-%20Beethoven%20-%20Fur%20Elise%20(Original).mp3",
     },
     {
-      title: "03-Beethoven-Piano_Sonata_No3_op2-3-Michelangeli1962-Track1",
-      composer: "Beethoven",
-      scr: "/Song/03.mp3",
+      title: "Étude in E Major, Op. 10 No. 3 (Tristesse)",
+      composer: "Chopin",
+      scr: "https://archive.org/download/classical-music-mix-by-various-artists/04%20-%20Chopin%20-%20Etude%20in%20E%20Major%2C%20Op.%2010%2C%20No.%203.mp3",
     },
     {
-      title: "04-Beethoven-Piano_Sonata_No3_op2-3-Michelangeli1962-Track2",
-      composer: "Beethoven",
-      scr: "/Song/04.mp3",
+      title: "Waltz No. 6 in D♭ Major, Op. 64 No. 1",
+      composer: "Chopin",
+      scr: "https://archive.org/download/classical-music-mix-by-various-artists/10%20-%20Chopin%20-%20Waltz%20No.%206%20in%20Db%20Major%2C%20Op.%2064%2C%20No.%201.mp3",
     },
     {
-      title: "05-Beethoven-Piano_Sonata_No3_op2-3-Michelangeli1962-Track3",
-      composer: "Beethoven",
-      scr: "/Song/05.mp3",
+      title: "Piano Concerto No. 2 in C Minor — Moderato",
+      composer: "Rachmaninov",
+      scr: "https://archive.org/download/classical-music-mix-by-various-artists/06%20-%20Rachmaninov%20-%20Piano%20Concert%2C%20No.%202%20in%20C%20Minor%2C%20Op.%2018%2C%20Moderato.mp3",
     },
     {
-      title: "06-Beethoven-Piano_Sonata_No3_op2-3-Michelangeli1962-Track4",
-      composer: "Beethoven",
-      scr: "/Song/06.mp3",
+      title: "Piano Concerto No. 2 in C Minor — Adagio sostenuto",
+      composer: "Rachmaninov",
+      scr: "https://archive.org/download/classical-music-mix-by-various-artists/08%20-%20Rachmaninov%20-%20Piano%20Concerto%20No.%202%20in%20C%20Minor%2C%20Op.%2018%2C%20Adagio%20sostenuto.mp3",
     },
     {
-      title: "07-Galuppi-Piano_Sonata_in_C-Michelangeli1962-Track1",
-      composer: "Galuppi",
-      scr: "/Song/07.mp3",
+      title: "Scenes from Childhood, Op. 15",
+      composer: "Schumann",
+      scr: "https://archive.org/download/classical-music-mix-by-various-artists/09%20-%20Schumann%20-%20Scenes%20from%20childhood%2C%20Op.%2015.mp3",
     },
     {
-      title: "08-Galuppi-Piano_Sonata_in_C-Michelangeli1962-Track2",
-      composer: "Galuppi",
-      scr: "/Song/08.mp3",
+      title: "Canon in D Major",
+      composer: "Pachelbel",
+      scr: "https://archive.org/download/classical-music-mix-by-various-artists/10%20-%20Pachelbel%20-%20Canon%20in%20D%20Major.mp3",
     },
     {
-      title: "09-Galuppi-Piano_Sonata_in_C-Michelangeli1962-Track3",
-      composer: "Galuppi",
-      scr: "/Song/09.mp3",
+      title: "Rondo alla Turca, K. 331",
+      composer: "Mozart",
+      scr: "https://archive.org/download/classical-music-mix-by-various-artists/12%20-%20Mozart%20-%20Rondo%20a%20la%20Turc%2C%20K331%2C%20No.%203.mp3",
     },
     {
-      title: "10-Scarlatti-Sonata_K11-Michelangeli1962",
-      composer: "Galuppi",
-      scr: "/Song/10.mp3",
+      title: "Hungarian Fantasy for Piano and Orchestra",
+      composer: "Liszt",
+      scr: "https://archive.org/download/classical-music-mix-by-various-artists/13%20-%20Liszt%20-%20Hungarian%20Fantasy%20for%20Piano%20and%20Orchestra.mp3",
     },
     {
-      title: "11-Scarlatti-Sonata_K159-Michelangeli1962",
-      composer: "Galuppi",
-      scr: "/Song/11.mp3",
+      title: "Peer Gynt Suite No. 1, Op. 46",
+      composer: "Grieg",
+      scr: "https://archive.org/download/classical-music-mix-by-various-artists/18%20-%20Grieg%20-%20Per%20Gynt%20Suite%20No.%201%2C%20Op%2064.mp3",
     },
     {
-      title: "12-Scarlatti-Sonata_K322-Michelangeli1962",
-      composer: "Galuppi",
-      scr: "/Song/12.mp3",
+      title: "Pictures at an Exhibition",
+      composer: "Mussorgsky",
+      scr: "https://archive.org/download/classical-music-mix-by-various-artists/19%20-%20Mussorgsky%20-%20Pictures%20at%20an%20Exhibition.mp3",
     },
     {
-      title: "13-Scarlatti-Sonata_K27-Michelangeli1962",
-      composer: "Galuppi",
-      scr: "/Song/13.mp3",
+      title: "Piano Concerto No. 1 in B♭ Minor — Allegro non troppo",
+      composer: "Tchaikovsky",
+      scr: "https://archive.org/download/classical-music-mix-by-various-artists/05%20-%20Tchaikovsky%20-%20Piano%20Concerto%20No.%201%20in%20B%20flat%20Minor%2C%20Op.%2023%2C%20Allegro%20non%20troppo.mp3",
     },
   ],
 
@@ -128,7 +130,8 @@ window.Card6 = {
     // 모바일 감지: pixelRatio 제한·antialias 제어에 사용
     this._isMobile =
       /Mobi|Android|iPad|Tablet/i.test(navigator.userAgent) ||
-      ("ontouchstart" in window && window.innerWidth < 1024);
+      ("ontouchstart" in window && window.innerWidth < 1024) ||
+      (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent)); // iPadOS 13+
 
     this.setupTheme();
     this.createDOM();
@@ -396,32 +399,37 @@ window.Card6 = {
     });
   },
 
-  /* ==================== AUDIO (Three.js Spatial) ==================== */
+  /* ==================== AUDIO ==================== */
 
-  // THREE.PositionalAudio + THREE.AudioListener로 Web Audio 공간음향 구현.
-  // AudioListener는 initThree()에서 카메라에 부착 → renderer.render() 시
-  // Three.js가 자동으로 listener 위치를 업데이트.
-  // PositionalAudio는 선택된 노드 mesh에 부착 → 노드 이동과 함께 panner 위치 자동 갱신.
   initAudio() {
-    if (this.positionalAudio) return;
-    try {
-      this.audioEl = new Audio();
-      this.audioEl.crossOrigin = "anonymous";
-      this.audioEl.loop = true;
+    if (this.audioLoader) return;
+    this.audioLoader = new THREE.AudioLoader();
+    this._mediaEl = new Audio(this._createSilentWavUrl());
+    this._mediaEl.loop = true;
+    this.positionalAudio = new THREE.PositionalAudio(this.audioListener);
+    // HRTF: Three.js 버전에 따라 메서드 없을 수 있으므로 panner 직접 접근
+    if (this.positionalAudio.panner) {
+      this.positionalAudio.panner.panningModel = "HRTF";
+    }
+    this.positionalAudio.setRefDistance(7);
+    this.positionalAudio.setMaxDistance(200);
+    this.positionalAudio.setRolloffFactor(0);
+    this.positionalAudio.setDistanceModel("inverse");
+    this.positionalAudio.setLoop(true);
+    this.scene.add(this.positionalAudio);
 
-      // THREE.PositionalAudio — HRTF 입체 공간음향 (PannerNode 내장)
-      this.positionalAudio = new THREE.PositionalAudio(this.listener);
-      this.positionalAudio.setMediaElementSource(this.audioEl);
-      // refDistance = 35: 카메라 궤도 반경과 동일 → 궤도 중 항상 최대 음량
-      // rolloffFactor = 0.4: 완만한 감쇠 → 먼 거리에서도 충분히 들림
-      // maxDistance = 500: 사실상 거리 한계 없음
-      this.positionalAudio.setRefDistance(35);
-      this.positionalAudio.setMaxDistance(500);
-      this.positionalAudio.setRolloffFactor(0.4);
-      this.positionalAudio.setVolume(1.0);
-    } catch (e) {
-      console.warn("PositionalAudio 초기화 실패:", e);
-      this.positionalAudio = null;
+    // 데스크탑: HTMLMediaElement → createMediaElementSource → PositionalAudio panner
+    // fetch() CORS preflight 없이 archive.org CDN 직접 접근 가능 + HRTF 3D 패닝 유지
+    // 오디오 그래프: _mediaElPlayer → _mediaElSource → panner → gain → listener → destination
+    if (!this._isMobile) {
+      this._mediaElPlayer = new Audio();
+      this._mediaElPlayer.crossOrigin = "anonymous";
+      this._mediaElPlayer.loop = true;
+      const ctx = this.audioListener.context;
+      this._mediaElSource = ctx.createMediaElementSource(this._mediaElPlayer);
+      this._mediaElSource.connect(this.positionalAudio.panner);
+      this.positionalAudio.panner.connect(this.positionalAudio.gain);
+      // positionalAudio.gain은 Three.js Audio 생성자에서 listener.getInput()에 이미 연결됨
     }
   },
 
@@ -431,20 +439,26 @@ window.Card6 = {
       this.selectedNode.userData.isSelected = false;
       const gm = this.selectedNode.userData.glowMesh;
       if (gm) gm.material.uniforms.uOpacity.value = 0;
-      if (this.positionalAudio) {
-        this.selectedNode.remove(this.positionalAudio);
-      }
       // hitbox를 원래 크기로 복원
       const hitbox = this.selectedNode.userData.hitbox;
       if (hitbox) hitbox.scale.setScalar(1);
       this.selectedNode = null;
     }
-    if (this.audioEl) {
-      this.audioEl.pause();
-      this.audioEl.currentTime = 0;
+    if (this.positionalAudio && this.positionalAudio.isPlaying) {
+      this.positionalAudio.stop();
     }
+    if (this._mediaElPlayer && !this._mediaElPlayer.paused) {
+      this._mediaElPlayer.pause();
+      this._mediaElPlayer.currentTime = 0;
+    }
+    if (this._mediaEl) {
+      this._mediaEl.pause();
+      this._mediaEl.currentTime = 0;
+    }
+    this._clearMediaSession();
     this.isZoomed = false;
     this.zoomNode = null;
+    this._audioGain = undefined; // 다음 selectNode 시 거리 기반 볼륨 초기화
     this._updateStopBtn();
   },
 
@@ -452,7 +466,11 @@ window.Card6 = {
   _updateStopBtn() {
     const btn = document.getElementById("c6-stop-btn");
     if (!btn) return;
-    const isPlaying = this.selectedNode && this.audioEl && !this.audioEl.paused;
+    // AudioLoader 성공 시 positionalAudio, CORS 폴백 시 _mediaElPlayer 중 하나를 확인
+    const isPlaying =
+      this.selectedNode &&
+      ((this.positionalAudio?.isPlaying) ||
+        (this._mediaElPlayer && !this._mediaElPlayer.paused));
     btn.classList.toggle("visible", !!isPlaying);
     if (isPlaying) {
       const track = this.TRACKS[this.selectedNode.userData.trackIndex];
@@ -463,7 +481,6 @@ window.Card6 = {
   },
 
   // Radio 선택: 같은 노드 재클릭 시 해제, 다른 노드 클릭 시 교체.
-  // PositionalAudio를 이전 mesh에서 제거하고 새 mesh에 부착.
   selectNode(nodeData) {
     const mesh = nodeData.mesh;
     const isSame = this.selectedNode === mesh;
@@ -473,18 +490,12 @@ window.Card6 = {
       this.selectedNode.userData.isSelected = false;
       const gm = this.selectedNode.userData.glowMesh;
       if (gm) gm.material.uniforms.uOpacity.value = 0;
-      // PositionalAudio를 이전 노드에서 분리
-      if (this.positionalAudio) {
-        this.selectedNode.remove(this.positionalAudio);
-      }
-      // hitbox를 원래 크기로 복원
       const prevHitbox = this.selectedNode.userData.hitbox;
       if (prevHitbox) prevHitbox.scale.setScalar(1);
       this.selectedNode = null;
     }
-    if (this.audioEl) {
-      this.audioEl.pause();
-      this.audioEl.currentTime = 0;
+    if (this.positionalAudio && this.positionalAudio.isPlaying) {
+      this.positionalAudio.stop();
     }
     this.isZoomed = false;
     this.zoomNode = null;
@@ -505,25 +516,237 @@ window.Card6 = {
     if (!track) return;
 
     this.initAudio();
-    if (!this.positionalAudio || !this.audioEl) return;
 
-    // PositionalAudio를 선택된 노드 mesh에 부착
-    // → Three.js가 render() 시 panner 위치를 mesh 위치와 동기화
-    mesh.add(this.positionalAudio);
+    // AudioContext resume: 모바일/태블릿은 user gesture(touchend/click) 내에서만 허용.
+    // initThree()에서 생성된 AudioContext는 초기에 suspended 상태 → 여기서 재개.
+    const ctx = this.audioListener.context;
+    if (ctx.state === "suspended") ctx.resume();
+    {
+      const unlockSrc = ctx.createBufferSource();
+      unlockSrc.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+      unlockSrc.connect(ctx.destination);
+      unlockSrc.start(0);
+    }
 
-    // 음소거 상태면 볼륨 0으로 재생 (재생 자체는 진행)
+    // phantom MediaElement 시작: user gesture 안에서 호출해야 iOS autoplay 정책 허용
+    if (this._mediaEl) this._mediaEl.play().catch(() => {});
+
+    // PositionalAudio를 선택된 노드 위치에 즉시 배치
+    if (this.positionalAudio) {
+      this.positionalAudio.position.copy(mesh.position);
+    }
+
+    // 음소거 상태 반영
     const isMuted = !document
       .getElementById("mute-btn")
       ?.classList.contains("unmuted");
-    this.positionalAudio.setVolume(isMuted ? 0 : 1.0);
+    if (this.positionalAudio) {
+      this.positionalAudio.setVolume(isMuted ? 0 : 1);
+      this._audioGain = undefined; // updateScene 첫 프레임에 거리 기반 값으로 초기화
+    }
 
-    this.audioEl.src = track.scr;
-    const ctx = this.listener.context;
-    ctx.resume().then(() => {
-      this.audioEl
+    const requestedMesh = mesh; // 비동기 완료 전 노드 변경 감지용
+
+    // 모바일: iOS/Android autoplay 정책상 play()는 user gesture 동기 컨텍스트에서만 허용.
+    // HTMLMediaElement 직접 재생 (WebAudio 우회) — 공간음향 없이 안정적 재생 보장.
+    if (this._isMobile) {
+      if (!this._mediaElPlayer) {
+        this._mediaElPlayer = new Audio();
+        this._mediaElPlayer.loop = true;
+      } else if (!this._mediaElPlayer.paused) {
+        this._mediaElPlayer.pause();
+        this._mediaElPlayer.currentTime = 0;
+      }
+      this._mediaElPlayer.volume = isMuted ? 0 : 1;
+      this._mediaElPlayer.src = track.scr;
+      this._mediaElPlayer
         .play()
-        .then(() => this._updateStopBtn())
-        .catch((e) => console.warn("재생 실패:", e));
+        .then(() => {
+          this._setupMediaSession(track);
+          this._updateStopBtn();
+        })
+        .catch((e) => console.warn("모바일 재생 실패:", e));
+    }
+
+    // 데스크탑: HTMLMediaElement → WebAudio 그래프 경유 재생 (fetch() CORS 오류 없음)
+    // _mediaElSource(createMediaElementSource)가 panner → gain → listener 체인에 연결되어 있어
+    // 별도 코드 없이 HRTF 3D 패닝이 동작함.
+    if (!this._isMobile) {
+      if (!this._mediaElPlayer.paused) {
+        this._mediaElPlayer.pause();
+        this._mediaElPlayer.currentTime = 0;
+      }
+      this._mediaElPlayer.src = track.scr;
+      this._mediaElPlayer
+        .play()
+        .then(() => {
+          if (this.selectedNode !== requestedMesh) return;
+          this._setupMediaSession(track);
+          this._updateStopBtn();
+        })
+        .catch((e) => console.warn("데스크탑 재생 실패:", e));
+    }
+  },
+
+  // AudioBuffer 로드: bufferCache → rawCache 디코딩 → fetch+decode 순서로 시도
+  // 반환: Promise<AudioBuffer>
+  _loadBuffer(src) {
+    // 1. 이미 디코딩된 버퍼가 있으면 즉시 반환
+    if (this._bufferCache[src]) return Promise.resolve(this._bufferCache[src]);
+
+    const ctx = this.audioListener.context;
+    const decode = (raw) =>
+      new Promise((res, rej) => ctx.decodeAudioData(raw.slice(0), res, rej)).then(
+        (buf) => {
+          this._bufferCache[src] = buf;
+          return buf;
+        },
+      );
+
+    // 2. 압축 데이터가 프리페치된 경우 → 디코딩만 (빠름)
+    if (this._rawCache[src]) return decode(this._rawCache[src]);
+
+    // 3. 프리페치 안 된 경우 → fetch + decode
+    return fetch(src)
+      .then((r) => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.arrayBuffer();
+      })
+      .then((raw) => {
+        this._rawCache[src] = raw;
+        return decode(raw);
+      });
+  },
+
+  // 카드 활성화 시 백그라운드에서 순차 프리페치 (네트워크 부하 분산)
+  // 모바일은 HTMLMediaElement 직접 재생이므로 _rawCache 불필요 → 스킵
+  _startPreload() {
+    if (this._isMobile) return;
+    if (this._preloadQueue) return; // 이미 시작됨
+    this._preloadQueue = this.TRACKS.map((t) => t.scr);
+    this._preloadStep();
+  },
+
+  _preloadStep() {
+    const src = this._preloadQueue?.shift();
+    if (!src) return;
+    if (this._rawCache[src]) {
+      this._preloadStep(); // 이미 캐시됨, 다음으로
+      return;
+    }
+    fetch(src)
+      .then((r) => r.arrayBuffer())
+      .then((buf) => {
+        this._rawCache[src] = buf;
+        setTimeout(() => this._preloadStep(), 300); // 트랙 간 300ms 간격으로 부하 분산
+      })
+      .catch(() => setTimeout(() => this._preloadStep(), 800)); // 실패 시 다음으로
+  },
+
+  // 1초 무음 WAV를 Blob URL로 생성 — phantom MediaElement 전용 (OS 미디어 알림 활성화용)
+  _createSilentWavUrl() {
+    const sr = 8000,
+      samples = sr; // 8kHz 모노, 1초
+    const buf = new ArrayBuffer(44 + samples * 2);
+    const v = new DataView(buf);
+    const w4 = (o, s) =>
+      [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    w4(0, "RIFF");
+    v.setUint32(4, 36 + samples * 2, true);
+    w4(8, "WAVE");
+    w4(12, "fmt ");
+    v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); // PCM
+    v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); // mono, sampleRate
+    v.setUint32(28, sr * 2, true);
+    v.setUint16(32, 2, true);
+    v.setUint16(34, 16, true);
+    w4(36, "data");
+    v.setUint32(40, samples * 2, true);
+    // samples 전체 = 0 (무음) — DataView 기본값이 0이므로 별도 초기화 불필요
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  },
+
+  // OS 미디어 알림에 트랙 정보 등록 + 미디어 컨트롤 핸들러 설정
+  _setupMediaSession(track) {
+    if (!("mediaSession" in navigator)) return;
+    if (window.MediaMetadata) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: track.title,
+        artist: track.composer,
+      });
+    }
+    navigator.mediaSession.playbackState = "playing";
+    const s = (a, fn) => {
+      try {
+        navigator.mediaSession.setActionHandler(a, fn);
+      } catch (e) {}
+    };
+    s("play", () => {
+      if (this.positionalAudio?.buffer && !this.positionalAudio.isPlaying) {
+        const ctx = this.audioListener.context;
+        if (ctx.state === "suspended") ctx.resume();
+        try {
+          this.positionalAudio.play();
+        } catch (e) {}
+        if (this._mediaEl) this._mediaEl.play().catch(() => {});
+        navigator.mediaSession.playbackState = "playing";
+        this._updateStopBtn();
+      }
+    });
+    s("pause", () => {
+      if (this.positionalAudio?.isPlaying) {
+        this.positionalAudio.pause();
+        if (this._mediaEl) this._mediaEl.pause();
+        navigator.mediaSession.playbackState = "paused";
+        this._updateStopBtn();
+      } else if (this._mediaElPlayer && !this._mediaElPlayer.paused) {
+        // HTMLMediaElement 폴백 경로
+        this._mediaElPlayer.pause();
+        if (this._mediaEl) this._mediaEl.pause();
+        navigator.mediaSession.playbackState = "paused";
+        this._updateStopBtn();
+      }
+    });
+    s("stop", () => this.stopPlayback());
+  },
+
+  // 글자 타이핑 효과: delayMs 후 charIntervalMs 간격으로 한 글자씩 추가
+  _typeText(el, text, delayMs, charIntervalMs) {
+    if (el._typeTimer) {
+      clearInterval(el._typeTimer);
+      el._typeTimer = null;
+    }
+    if (el._typeDelay) {
+      clearTimeout(el._typeDelay);
+      el._typeDelay = null;
+    }
+    el.textContent = "";
+    el.classList.remove("typing");
+    el._typeDelay = setTimeout(() => {
+      el.classList.add("typing");
+      let i = 0;
+      el._typeTimer = setInterval(() => {
+        el.textContent = text.slice(0, ++i);
+        if (i >= text.length) {
+          clearInterval(el._typeTimer);
+          el._typeTimer = null;
+          el.classList.remove("typing");
+        }
+      }, charIntervalMs);
+    }, delayMs);
+  },
+
+  // OS 미디어 알림 해제
+  _clearMediaSession() {
+    if (!("mediaSession" in navigator)) return;
+    navigator.mediaSession.metadata = null;
+    navigator.mediaSession.playbackState = "none";
+    ["play", "pause", "stop"].forEach((a) => {
+      try {
+        navigator.mediaSession.setActionHandler(a, null);
+      } catch (e) {}
     });
   },
 
@@ -776,10 +999,19 @@ window.Card6 = {
     this.camera = new THREE.PerspectiveCamera(55, 1, 0.1, 1000);
     this.camera.position.z = 35;
 
-    // THREE.AudioListener를 카메라에 부착
-    // → renderer.render() 시 Three.js가 AudioContext listener 위치를 자동 갱신
-    this.listener = new THREE.AudioListener();
-    this.camera.add(this.listener);
+    // AudioListener:
+    // PC: 별도 Object3D(_audioListenerObj)에 연결, 회전 고정(identity) + 위치만 카메라와 동기화
+    //   → camera.lookAt(node)로 인해 리스너가 항상 음원 정면을 향하는 문제 해결
+    //   → 카메라가 노드 주위를 공전할 때 음원이 리스너 기준 좌→앞→우→뒤로 이동 → HRTF 패닝
+    // 모바일: 카메라에 직접 부착 (3D 음향 미사용, HTMLMediaElement 직접 재생)
+    this.audioListener = new THREE.AudioListener();
+    if (!this._isMobile) {
+      this._audioListenerObj = new THREE.Object3D();
+      this.scene.add(this._audioListenerObj);
+      this._audioListenerObj.add(this.audioListener);
+    } else {
+      this.camera.add(this.audioListener);
+    }
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: !this._isMobile,
@@ -867,7 +1099,7 @@ window.Card6 = {
             0,
             Math.min(100, this.targetScroll + dy * 0.3),
           );
-          e.preventDefault(); // 페이지 스크롤 방지
+          if (e.cancelable) e.preventDefault(); // 페이지 스크롤 방지
         }
 
         _prevTouchY = touch.clientY;
@@ -940,6 +1172,7 @@ window.Card6 = {
     if (stopBtn) {
       stopBtn.addEventListener("click", (e) => {
         e.stopPropagation();
+        if (!this.isActive || !this.card.classList.contains("fullscreen")) return; // 카드 축소 상태에서 클릭 차단
         this.stopPlayback();
       });
     }
@@ -1113,6 +1346,35 @@ window.Card6 = {
       }
     });
 
+    // PositionalAudio 위치 + 거리 볼륨: 선택된 노드를 매 프레임 추적
+    // 데스크탑: _mediaElSource → panner → gain 체인이므로 setVolume()으로 거리 볼륨 제어
+    if (this.positionalAudio && this.selectedNode) {
+      this.positionalAudio.position.copy(this.selectedNode.position);
+      if (this._mediaElSource || this.positionalAudio.buffer) {
+        const dist = this.camera.position.distanceTo(
+          this.selectedNode.position,
+        );
+        const isMuted = !document
+          .getElementById("mute-btn")
+          ?.classList.contains("unmuted");
+        const tg = isMuted
+          ? 0
+          : Math.min(1.0, Math.pow(14 / Math.max(dist, 1), 2));
+        if (this._audioGain === undefined) this._audioGain = tg;
+        this._audioGain += (tg - this._audioGain) * 0.08;
+        this.positionalAudio.setVolume(this._audioGain);
+      }
+    }
+
+    // 모바일 전용: _mediaElPlayer 볼륨 직접 제어 (WebAudio 미사용)
+    // 데스크탑은 positionalAudio.gain(WebAudio)이 볼륨을 담당하므로 _mediaElPlayer.volume은 1 고정
+    if (this._isMobile && this._mediaElPlayer && !this._mediaElPlayer.paused) {
+      const isMutedEl = !document
+        .getElementById("mute-btn")
+        ?.classList.contains("unmuted");
+      this._mediaElPlayer.volume = isMutedEl ? 0 : 1;
+    }
+
     // 노드 & 라인 색상 애니메이션
     this.updateNodeColors(this.hueTime);
 
@@ -1134,9 +1396,6 @@ window.Card6 = {
       }
     }
 
-    // 공간음향: THREE.PositionalAudio + AudioListener가 renderer.render() 시
-    // 자동으로 위치를 갱신하므로 수동 업데이트 불필요.
-
     // Tooltip (풀스크린 전용 — hoveredMesh는 클릭 고정 시에만 non-null)
     if (hoveredMesh) {
       const d = hoveredMesh.userData;
@@ -1145,20 +1404,28 @@ window.Card6 = {
       if (this.lastHoveredId !== d.id) {
         this.lastHoveredId = d.id;
         this.tooltip.classList.remove("visible");
-        ["tp-id", "tp-stat", "tp-sig"].forEach(
-          (id) => (document.getElementById(id).textContent = ""),
-        );
-        void this.tooltip.offsetWidth;
 
-        document.getElementById("tp-id").textContent = track
-          ? `> ${track.title}`
-          : `> REF_ID: ${d.id}`;
-        document.getElementById("tp-stat").textContent = track
+        // 노드 고유 색으로 border-left 색 변경
+        const accentColor =
+          d.nodeHue !== undefined
+            ? `hsl(${Math.round(d.nodeHue * 360)}, 70%, 82%)`
+            : this.accentColor;
+        this.tooltip.style.setProperty("--node-accent", accentColor);
+
+        const text1 = track ? `> ${track.title}` : `> REF_ID: ${d.id}`;
+        const text2 = track
           ? `> ${track.composer}`
           : `> SIGNAL: ${d.power}% STABLE`;
-        document.getElementById("tp-sig").textContent = d.isSelected
-          ? `> ♪ PLAYING`
-          : `> CLICK TO PLAY`;
+        const text3 = d.isSelected ? `> ♪ PLAYING` : `> CLICK TO PLAY`;
+        // 각 줄을 순차 타이핑: 이전 줄이 끝나면 다음 줄 시작
+        const cpm = 22,
+          gap = 80;
+        const d0 = 80;
+        const d1 = d0 + text1.length * cpm + gap;
+        const d2 = d1 + text2.length * cpm + gap;
+        this._typeText(document.getElementById("tp-id"), text1, d0, cpm);
+        this._typeText(document.getElementById("tp-stat"), text2, d1, cpm);
+        this._typeText(document.getElementById("tp-sig"), text3, d2, cpm);
         this.tooltip.classList.add("visible");
       } else {
         // hover 중에도 재생 상태 동적 반영
@@ -1180,14 +1447,36 @@ window.Card6 = {
     } else {
       if (this.lastHoveredId !== null) {
         this.tooltip.classList.remove("visible");
+        // 진행 중인 타이핑 취소
+        ["tp-id", "tp-stat", "tp-sig"].forEach((id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (el._typeTimer) {
+            clearInterval(el._typeTimer);
+            el._typeTimer = null;
+          }
+          if (el._typeDelay) {
+            clearTimeout(el._typeDelay);
+            el._typeDelay = null;
+          }
+          el.classList.remove("typing");
+        });
         this.lastHoveredId = null;
       }
     }
 
     // Camera
     if (this.isZoomed && this.zoomNode) {
-      this._v3CamTarget.copy(this.zoomNode.position).add({ x: 0, y: 0, z: 7 });
-      this.camera.position.lerp(this._v3CamTarget, 0.1);
+      // 노드 주위를 느리게 공전: HRTF 방향이 front→right→back→left로 계속 변해 3D 음향 극대화
+      // hueTime은 isZoomed 여부와 무관하게 항상 진행 → 안정적인 공전 각도
+      const orbitR = 7;
+      const a = this.hueTime * 0.25; // ~25초/바퀴
+      this._v3CamTarget.set(
+        this.zoomNode.position.x + orbitR * Math.sin(a),
+        this.zoomNode.position.y + 2 + orbitR * 0.25 * Math.sin(a * 0.7),
+        this.zoomNode.position.z + orbitR * Math.cos(a),
+      );
+      this.camera.position.lerp(this._v3CamTarget, 0.05);
       this.camera.lookAt(this.zoomNode.position);
     } else {
       const camX = Math.cos(this.customTime * 0.15) * 35;
@@ -1195,6 +1484,10 @@ window.Card6 = {
       this._v3CamTarget.set(camX, 4, camZ);
       this.camera.position.lerp(this._v3CamTarget, 0.05);
       this.camera.lookAt(0, 0, 0);
+    }
+    // PC 전용: AudioListener 위치 동기화 (회전 고정 → HRTF 패닝)
+    if (!this._isMobile && this._audioListenerObj) {
+      this._audioListenerObj.position.copy(this.camera.position);
     }
   },
 
@@ -1208,7 +1501,6 @@ window.Card6 = {
       // autoClear=false이므로 수동 clear 후 두 씬을 순서대로 렌더링
       this.renderer.clear();
       this.renderer.render(this.auroraScene, this.auroraCamera);
-      // AudioListener·PositionalAudio 위치 갱신은 이 render() 호출에서 수행
       this.renderer.render(this.scene, this.camera);
     }
   },
@@ -1217,14 +1509,25 @@ window.Card6 = {
     this.isActive = true;
     this.handleResize();
     if (this.clock) this.clock.getDelta();
+    // _startPreload() 제거: fetch()는 archive.org CORS로 실패하며 bufferCache 미사용
     // 복귀 시 선택된 노드의 음악 재개
-    if (this.listener && this.selectedNode && this.audioEl) {
-      this.listener.context.resume().then(() => {
-        this.audioEl
-          .play()
-          .then(() => this._updateStopBtn())
-          .catch(() => {});
-      });
+    if (this.selectedNode) {
+      if (this._mediaElPlayer?.paused && this._mediaElPlayer.src) {
+        // MediaElement 재개: 데스크탑은 WebAudio 그래프 경유, 모바일은 직접
+        const ctx = this.audioListener.context;
+        if (ctx.state === "suspended") ctx.resume();
+        if (this._isMobile) {
+          const isMuted = !document
+            .getElementById("mute-btn")
+            ?.classList.contains("unmuted");
+          this._mediaElPlayer.volume = isMuted ? 0 : 1;
+        }
+        this._mediaElPlayer.play().catch(() => {});
+        if (this._mediaEl) this._mediaEl.play().catch(() => {});
+        const track = this.TRACKS[this.selectedNode.userData.trackIndex];
+        if (track) this._setupMediaSession(track);
+        this._updateStopBtn();
+      }
     }
   },
 
@@ -1233,10 +1536,19 @@ window.Card6 = {
     this.isZoomed = false;
     this.zoomNode = null;
     if (this.tooltip) this.tooltip.classList.remove("visible");
+    // 정지 버튼 숨김: 카드가 축소될 때 visible 상태면 pointer-events: auto가 남아 클릭됨
+    const stopBtn = document.getElementById("c6-stop-btn");
+    if (stopBtn) stopBtn.classList.remove("visible");
     // 카드 비활성화 시 음악 일시 정지
-    if (this.audioEl && !this.audioEl.paused) this.audioEl.pause();
-    if (this.listener && this.listener.context.state !== "closed") {
-      this.listener.context.suspend();
+    if (this.positionalAudio && this.positionalAudio.isPlaying) {
+      this.positionalAudio.pause();
+    }
+    if (this._mediaElPlayer && !this._mediaElPlayer.paused) {
+      this._mediaElPlayer.pause();
+    }
+    if (this._mediaEl) this._mediaEl.pause();
+    if ("mediaSession" in navigator && this.selectedNode) {
+      navigator.mediaSession.playbackState = "paused";
     }
   },
 };

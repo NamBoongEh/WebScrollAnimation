@@ -64,6 +64,27 @@ window.Card3 = {
 
     new ResizeObserver(() => this.handleResize()).observe(this.container);
     this.initThree();
+
+    // 히든 버튼: 🚧 아이콘 클릭 → 오버레이 숨김 + 풀스크린 진입
+    const wipOverlay = this.card.querySelector('.c3-wip-overlay');
+    const wipIcon = this.card.querySelector('.c3-wip-icon');
+    if (wipIcon && wipOverlay) {
+      wipIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = App.cards.indexOf(this.card);
+        if (idx !== -1 && !App.isFullscreen && !App.isAnimating) {
+          wipOverlay.classList.add('c3-wip-hidden');
+          App.enterFullscreen(idx);
+        }
+      });
+
+      // 풀스크린 종료(뒤로가기) 감지 → 오버레이 복원
+      new MutationObserver(() => {
+        if (!this.card.classList.contains('fullscreen')) {
+          wipOverlay.classList.remove('c3-wip-hidden');
+        }
+      }).observe(this.card, { attributes: true, attributeFilter: ['class'] });
+    }
   },
 
   initThree() {
