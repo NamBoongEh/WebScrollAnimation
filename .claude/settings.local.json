@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:archive.org)"
+      "WebFetch(domain:archive.org)",
+      "Bash(node --check card4.js)"
     ]
   }
 }

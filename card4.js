@@ -19,6 +19,8 @@ window.Card4 = {
   houses: [],
   windmills: [],
   sheep: [], // 양 배열 - 반드시 초기화 필요
+  robotDogs: [], // 로봇 강아지 배열 (버튼으로 추가, 항상 뒤로 걷기)
+  _robotMats: null, // 로봇 강아지 공유 material 캐시
   ducks: [], // 오리 배열
   obstacleList: [],
   groundMesh: null,
@@ -1605,6 +1607,32 @@ window.Card4 = {
         }
       }
     });
+
+    // 로봇 강아지: 양과 동일하게 빈 위치로 이동 + 낙하
+    this.robotDogs.forEach((r, idx) => {
+      if (minDist2(r.x, r.z) < 9) {
+        let attempts = 0;
+        let nx, nz;
+        do {
+          const side = Math.random() > 0.5 ? 1 : -1;
+          nx = side * (15 + Math.random() * 45);
+          nz = (Math.random() - 0.5) * 120;
+          attempts++;
+        } while (this.isBlocked(nx, nz, -1, idx) && attempts < 100);
+
+        if (attempts < 100) {
+          r.x = nx;
+          r.z = nz;
+          r.targetX = nx;
+          r.targetZ = nz;
+          r.isIdle = false;
+          r.isFalling = true;
+          r.fallY = 30;
+          r.fallVY = 0;
+          r.mesh.position.set(nx, 30, nz);
+        }
+      }
+    });
   },
 
   /* ==================== SCENERY ==================== */
@@ -2113,7 +2141,7 @@ window.Card4 = {
     return false;
   },
 
-  isBlocked(x, z, sheepIdx) {
+  isBlocked(x, z, sheepIdx, robotIdx = -1) {
     // 트랙 근처 체크
     if (this.isNearTrack(x, z)) return true;
 
@@ -2128,6 +2156,15 @@ window.Card4 = {
     for (let j = 0; j < this.sheep.length; j++) {
       if (j === sheepIdx) continue;
       const other = this.sheep[j];
+      const dx = x - other.x,
+        dz = z - other.z;
+      if (dx * dx + dz * dz < 4) return true;
+    }
+
+    // 로봇 강아지와의 거리
+    for (let j = 0; j < this.robotDogs.length; j++) {
+      if (j === robotIdx) continue;
+      const other = this.robotDogs[j];
       const dx = x - other.x,
         dz = z - other.z;
       if (dx * dx + dz * dz < 4) return true;
@@ -2587,6 +2624,293 @@ window.Card4 = {
     });
   },
 
+  /* ==================== ROBOT DOG ==================== */
+  // 산업용 4족 로봇 (노란 몸통 + 검은 다리). 로컬 +x 가 머리 방향.
+  // 자세: 앞다리는 굽혀 서고(머리 들림), 뒷다리는 앞으로 쭉 뻗어 바닥에 끌림
+  ROBOT_PITCH: 0.38, // 몸통 앞쪽 들림 각도
+  ROBOT_LEG_BASE: {
+    // torso 로컬 기준 hip/knee 기본 각도 (rotation.z)
+    front: { hip: -0.98, knee: 1.45 },
+    back: { hip: 0.75, knee: 0.36 },
+  },
+  createOneRobotDog() {
+    if (!this._robotMats) {
+      this._robotMats = {
+        yellow: new THREE.MeshLambertMaterial({ color: 0xf2c919 }),
+        dark: new THREE.MeshLambertMaterial({ color: 0x1e1e1e }),
+        joint: new THREE.MeshLambertMaterial({ color: 0x555555 }),
+        lens: new THREE.MeshBasicMaterial({ color: 0x223344 }),
+      };
+    }
+    const { yellow, dark, joint, lens } = this._robotMats;
+    const g = new THREE.Group();
+
+    // torso 원점 = 뒷다리 고관절. 여기를 축으로 앞쪽을 들어 올림
+    const torso = new THREE.Group();
+    torso.position.set(-0.58, 0.28, 0);
+    torso.rotation.z = this.ROBOT_PITCH;
+    g.add(torso);
+
+    // 좌표는 '서 있는 자세' 기준(hip y=0.88)으로 적고 torso 로컬로 변환
+    const addBox = (w, h, d, mat, x, y, z) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.position.set(x + 0.58, y - 0.88, z);
+      m.castShadow = true;
+      torso.add(m);
+      return m;
+    };
+
+    addBox(1.5, 0.34, 0.52, yellow, 0, 1.0, 0); // 몸통
+    addBox(1.4, 0.14, 0.46, dark, 0, 0.78, 0); // 하부 프레임
+    addBox(1.1, 0.06, 0.3, dark, 0, 1.2, 0); // 상단 레일
+    [-1, 1].forEach((side) => {
+      addBox(1.0, 0.16, 0.02, dark, 0, 0.98, side * 0.27); // 측면 패널
+    });
+    addBox(0.18, 0.28, 0.46, yellow, 0.84, 0.98, 0); // 전면 센서 헤드
+    addBox(0.12, 0.26, 0.46, dark, -0.8, 0.98, 0); // 후면
+    [-0.12, 0.12].forEach((side) => {
+      const cam = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), lens);
+      cam.position.set(0.94 + 0.58, 1.0 - 0.88, side);
+      torso.add(cam);
+    });
+
+    // 다리: hip(고관절) → knee(무릎)
+    const legPositions = [
+      { x: 1.16, z: -0.32, name: "FL", front: true },
+      { x: 1.16, z: 0.32, name: "FR", front: true },
+      { x: 0, z: -0.32, name: "BL", front: false },
+      { x: 0, z: 0.32, name: "BR", front: false },
+    ];
+    const legs = {};
+    legPositions.forEach((lp) => {
+      const base = lp.front
+        ? this.ROBOT_LEG_BASE.front
+        : this.ROBOT_LEG_BASE.back;
+      const hip = new THREE.Group();
+      hip.position.set(lp.x, 0, lp.z);
+      hip.rotation.z = base.hip;
+      // 뒷다리는 바깥쪽으로 살짝 벌려서 끌림 (+x 방향 다리 기준)
+      if (!lp.front) hip.rotation.y = -Math.sign(lp.z) * 0.25;
+
+      const hipJoint = new THREE.Mesh(
+        new THREE.SphereGeometry(0.1, 6, 4),
+        joint,
+      );
+      hip.add(hipJoint);
+
+      const upper = new THREE.Mesh(
+        new THREE.BoxGeometry(0.13, 0.42, 0.13),
+        dark,
+      );
+      upper.position.y = -0.21;
+      upper.castShadow = true;
+      hip.add(upper);
+
+      const cover = new THREE.Mesh(
+        new THREE.BoxGeometry(0.16, 0.18, 0.16),
+        yellow,
+      );
+      cover.position.y = -0.1;
+      hip.add(cover);
+
+      const knee = new THREE.Group();
+      knee.position.y = -0.42;
+      knee.rotation.z = base.knee;
+      knee.add(new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), joint));
+
+      const lower = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.04, 0.03, 0.45, 6),
+        dark,
+      );
+      lower.position.y = -0.225;
+      lower.castShadow = true;
+      knee.add(lower);
+
+      const foot = new THREE.Mesh(new THREE.SphereGeometry(0.065, 6, 4), dark);
+      foot.position.y = -0.45;
+      knee.add(foot);
+
+      hip.add(knee);
+      torso.add(hip);
+      legs[lp.name] = { hip, knee, base, splay: hip.rotation.y };
+    });
+    g.userData.legs = legs;
+    g.userData.torso = torso;
+
+    g.scale.setScalar(1.2);
+    return g;
+  },
+
+  addRobotDog() {
+    if (!this.scene || this.robotDogs.length >= 10) return;
+
+    let attempts = 0;
+    let x, z;
+    do {
+      const side = Math.random() > 0.5 ? 1 : -1;
+      x = side * (15 + Math.random() * 45);
+      z = (Math.random() - 0.5) * 120;
+      attempts++;
+    } while (this.isBlocked(x, z, -1) && attempts < 100);
+    if (attempts >= 100) return;
+
+    const mesh = this.createOneRobotDog();
+    const startAngle = Math.random() * Math.PI * 2;
+    mesh.position.set(x, 30, z);
+    mesh.rotation.y = -startAngle;
+    this.scene.add(mesh);
+
+    this.robotDogs.push({
+      mesh: mesh,
+      x: x,
+      z: z,
+      targetX: x,
+      targetZ: z,
+      angle: startAngle, // 머리 방향 (진행 방향은 angle + π)
+      speed: 0.008 + Math.random() * 0.008,
+      gaitPhase: Math.random() * Math.PI * 2,
+      nextMoveTime: 0,
+      isIdle: false,
+      idleUntil: 0,
+      isFalling: true,
+      fallY: 30,
+      fallVY: 0,
+    });
+    this._needsRender = true;
+  },
+
+  _setRobotGait(mesh, t, phase) {
+    // 앞다리 두 개를 동시에 움직여 뒤로 기어감: 발을 들고 뒤로 스윙 → 딛고 앞으로 밀기
+    // 뒷다리는 바닥에 끌리며 함께 살짝 흔들림
+    const legs = mesh.userData.legs;
+    const ph = t * 7 + phase;
+    const lift = Math.max(0, -Math.cos(ph));
+    ["FL", "FR"].forEach((name) => {
+      const L = legs[name];
+      L.hip.rotation.z = L.base.hip + Math.sin(ph) * 0.3;
+      L.knee.rotation.z = L.base.knee + lift * 0.45;
+    });
+    ["BL", "BR"].forEach((name) => {
+      const L = legs[name];
+      L.hip.rotation.y = L.splay * (1 + Math.sin(ph) * 0.25);
+    });
+    mesh.userData.torso.rotation.z =
+      this.ROBOT_PITCH + Math.sin(ph * 2) * 0.025;
+  },
+
+  _relaxRobotLegs(mesh) {
+    const legs = mesh.userData.legs;
+    for (const name in legs) {
+      const { hip, knee, base, splay } = legs[name];
+      hip.rotation.z += (base.hip - hip.rotation.z) * 0.1;
+      hip.rotation.y += (splay - hip.rotation.y) * 0.1;
+      knee.rotation.z += (base.knee - knee.rotation.z) * 0.1;
+    }
+    const torso = mesh.userData.torso;
+    torso.rotation.z += (this.ROBOT_PITCH - torso.rotation.z) * 0.1;
+  },
+
+  updateRobotDogs(t) {
+    const self = this;
+    this.robotDogs.forEach((r, idx) => {
+      if (r.isFalling) {
+        r.fallVY += 0.04;
+        r.fallY = Math.max(0, r.fallY - r.fallVY);
+        r.mesh.position.set(r.x, r.fallY, r.z);
+        if (r.fallY <= 0) {
+          r.isFalling = false;
+          r.nextMoveTime = t + 2;
+        }
+        return;
+      }
+
+      // 정지 대기 (양의 풀 뜯기 구간에 해당)
+      if (r.isIdle) {
+        if (t > r.idleUntil) {
+          r.isIdle = false;
+          r.nextMoveTime = t + 0.5;
+        }
+        this._relaxRobotLegs(r.mesh);
+        return;
+      }
+
+      // 새 목적지: 항상 몸 뒤쪽 방향에서 선택
+      if (t > r.nextMoveTime) {
+        let attempts = 0;
+        let nx, nz;
+        const back = r.angle + Math.PI;
+        do {
+          const da = (Math.random() - 0.5) * Math.PI * 0.7;
+          const dist = 4 + Math.random() * 10;
+          nx = r.x + Math.cos(back + da) * dist;
+          nz = r.z + Math.sin(back + da) * dist;
+          nx = Math.max(-58, Math.min(58, nx));
+          nz = Math.max(-58, Math.min(58, nz));
+          attempts++;
+        } while (self.isBlocked(nx, nz, -1, idx) && attempts < 30);
+
+        if (attempts < 30) {
+          r.targetX = nx;
+          r.targetZ = nz;
+        } else {
+          r.angle += Math.PI;
+          r.targetX = r.x + Math.cos(r.angle + Math.PI) * 5;
+          r.targetZ = r.z + Math.sin(r.angle + Math.PI) * 5;
+        }
+        r.nextMoveTime = t + 4 + Math.random() * 6;
+
+        if (Math.random() < 0.25) {
+          r.isIdle = true;
+          r.idleUntil = t + 2 + Math.random() * 3;
+          return;
+        }
+      }
+
+      const dx = r.targetX - r.x;
+      const dz = r.targetZ - r.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+
+      if (dist > 0.5) {
+        let walking = true;
+        // 엉덩이가 목표를 향하도록 머리 방향 = 이동 방향 + π
+        const headAngle = Math.atan2(dz, dx) + Math.PI;
+        let angleDiff = headAngle - r.angle;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        r.angle += angleDiff * 0.04;
+
+        const moveDir = r.angle + Math.PI;
+        const newX = r.x + Math.cos(moveDir) * r.speed;
+        const newZ = r.z + Math.sin(moveDir) * r.speed;
+
+        if (self.isBlocked(newX, newZ, -1, idx)) {
+          const turnDir = Math.random() < 0.5 ? 1 : -1;
+          const avoidDir = moveDir + turnDir * (Math.PI / 4);
+          const ax = r.x + Math.cos(avoidDir) * r.speed;
+          const az = r.z + Math.sin(avoidDir) * r.speed;
+          if (!self.isBlocked(ax, az, -1, idx)) {
+            r.angle = avoidDir - Math.PI;
+            r.x = ax;
+            r.z = az;
+          } else {
+            r.nextMoveTime = t + 0.5;
+            walking = false;
+          }
+        } else {
+          r.x = newX;
+          r.z = newZ;
+        }
+
+        r.mesh.position.set(r.x, 0, r.z);
+        r.mesh.rotation.y = -r.angle;
+
+        if (walking) this._setRobotGait(r.mesh, t, r.gaitPhase);
+      } else {
+        this._relaxRobotLegs(r.mesh);
+      }
+    });
+  },
+
   toggleSheepDance(sheepIdx) {
     const s = this.sheep[sheepIdx];
     if (!s) return;
@@ -2881,6 +3205,10 @@ window.Card4 = {
       }
     });
 
+    _btn("c4-add-robotdog", () => {
+      this.addRobotDog();
+    });
+
     _btn("c4-reset-train", () => {
       this.resetTrainPosition();
     });
@@ -3166,6 +3494,7 @@ window.Card4 = {
     this.updateSmoke();
     this.updateSkyVehicle(t);
     this.updateSheep(t);
+    this.updateRobotDogs(t);
     this.updateDucks(t);
 
     this.clouds.forEach((c) => {
